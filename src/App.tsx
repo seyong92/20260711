@@ -1,3 +1,5 @@
+import { useEffect } from 'react'
+
 import { Footer } from './components/Footer'
 import { GallerySection } from './components/GallerySection'
 import { Hero } from './components/Hero'
@@ -29,6 +31,26 @@ function App() {
   const activeSection = useActiveSection(
     siteContent.sections.map((section) => section.sectionId),
   )
+
+  useEffect(() => {
+    document.title = siteContent.meta.title
+
+    const descriptionTag = document.querySelector('meta[name="description"]')
+    if (descriptionTag) {
+      descriptionTag.setAttribute('content', siteContent.meta.description)
+    }
+
+    const faviconTag = document.querySelector<HTMLLinkElement>('link[rel="icon"]')
+    if (faviconTag) {
+      faviconTag.href = siteContent.meta.faviconSrc
+      return
+    }
+
+    const link = document.createElement('link')
+    link.rel = 'icon'
+    link.href = siteContent.meta.faviconSrc
+    document.head.appendChild(link)
+  }, [])
 
   return (
     <div className="app-shell">
@@ -62,9 +84,8 @@ function App() {
           section={siteContent.sections.find((section) => section.sectionId === 'gallery')!}
           gallery={siteContent.gallery}
         />
+        <Footer footer={siteContent.footer} />
       </main>
-
-      <Footer footer={siteContent.footer} gameEntry={siteContent.gameEntry} />
     </div>
   )
 }

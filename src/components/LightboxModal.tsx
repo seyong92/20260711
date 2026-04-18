@@ -44,23 +44,26 @@ export function LightboxModal({
   return (
     <div className="lightbox" role="dialog" aria-modal="true" aria-label="갤러리 확대 보기">
       <button type="button" className="lightbox__backdrop" onClick={onClose} aria-label="닫기" />
-      <div className="lightbox__content">
-        <button type="button" className="lightbox__nav" onClick={onPrevious} aria-label="이전 사진">
-          <Icon name="arrowLeft" className="lightbox__nav-icon" />
-        </button>
+      <div className="lightbox__content" onClick={onClose}>
+        <figure className="lightbox__figure" onClick={(event) => event.stopPropagation()}>
+          <button
+            type="button"
+            className="lightbox__nav lightbox__nav--previous"
+            onClick={onPrevious}
+            aria-label="이전 사진"
+          >
+            <Icon name="arrowLeft" className="lightbox__nav-icon" />
+          </button>
 
-        <figure className="lightbox__figure">
           <img src={item.src} alt={item.alt} className="lightbox__image" />
-          <figcaption className="lightbox__caption">
-            <span>{item.caption ?? item.alt}</span>
-            <button type="button" className="lightbox__close" onClick={onClose}>
-              닫기
-            </button>
-          </figcaption>
+
+          <button type="button" className="lightbox__nav lightbox__nav--next" onClick={onNext} aria-label="다음 사진">
+            <Icon name="arrowRight" className="lightbox__nav-icon" />
+          </button>
         </figure>
 
-        <button type="button" className="lightbox__nav" onClick={onNext} aria-label="다음 사진">
-          <Icon name="arrowRight" className="lightbox__nav-icon" />
+        <button type="button" className="lightbox__close" onClick={onClose}>
+          닫기
         </button>
       </div>
     </div>

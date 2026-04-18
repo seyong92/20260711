@@ -2,6 +2,7 @@ import { useState } from 'react'
 
 import type { AccountsContent, AccountEntry, NavItem } from '../types/site'
 import { Icon } from './icons'
+import { Reveal } from './Reveal'
 import { SectionHeading } from './SectionHeading'
 
 interface AccountSectionProps {
@@ -18,7 +19,7 @@ function AccountCard({
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(entry.accountNumber)
+      await navigator.clipboard.writeText(entry.accountNumber.replaceAll('-', ''))
       setCopied(true)
       window.setTimeout(() => setCopied(false), 1600)
     } catch {
@@ -50,25 +51,25 @@ export function AccountSection({ section, accounts }: AccountSectionProps) {
   return (
     <section id={section.sectionId} className="section section--accounts">
       <SectionHeading title={accounts.title} />
-      <div className="section-lead">
+      <Reveal className="section-lead" delay={40}>
         {accounts.description.map((line) => (
           <p key={line}>{line}</p>
         ))}
-      </div>
+      </Reveal>
 
       <div className="account-groups">
         {([
           ['groom', "Groom's Side"],
           ['bride', "Bride's Side"],
         ] as const).map(([key, label]) => (
-          <article key={key} className="account-group">
+          <Reveal key={key} as="article" className="account-group" delay={key === 'groom' ? 100 : 180}>
             <p className="account-group__label">{label}</p>
             <div className="account-group__card">
               {groupedEntries[key].map((entry) => (
                 <AccountCard key={`${entry.side}-${entry.accountNumber}`} entry={entry} />
               ))}
             </div>
-          </article>
+          </Reveal>
         ))}
       </div>
     </section>

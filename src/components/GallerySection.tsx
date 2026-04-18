@@ -2,6 +2,7 @@ import { useState } from 'react'
 
 import type { GalleryContent, NavItem } from '../types/site'
 import { LightboxModal } from './LightboxModal'
+import { Reveal } from './Reveal'
 import { SectionHeading } from './SectionHeading'
 
 interface GallerySectionProps {
@@ -17,15 +18,16 @@ export function GallerySection({ section, gallery }: GallerySectionProps) {
       <SectionHeading title={gallery.title} subtitle={gallery.subtitle} />
       <div className="gallery-grid">
         {gallery.items.map((item, index) => (
-          <button
+          <Reveal
             key={item.id}
-            type="button"
+            as="button"
             className="gallery-grid__item"
-            style={{ aspectRatio: item.ratio }}
+            delay={40 + index * 40}
             onClick={() => setActiveIndex(index)}
+            style={{ aspectRatio: item.ratio }}
           >
             <img src={item.src} alt={item.alt} className="gallery-grid__image" />
-          </button>
+          </Reveal>
         ))}
       </div>
 

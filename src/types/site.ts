@@ -32,6 +32,12 @@ export interface CoupleProfile {
   bride: string
 }
 
+export interface SiteMetaContent {
+  title: string
+  description: string
+  faviconSrc: string
+}
+
 export interface HeroContent {
   dateLabel: string
   timeLabel: string
@@ -47,9 +53,14 @@ export interface InvitationContent {
   closingIconLabel: string
 }
 
+export interface FamilyParent {
+  name: string
+  deceased?: boolean
+}
+
 export interface FamilySide {
   roleLabel: string
-  parents: string[]
+  parents: FamilyParent[]
   relation: string
   name: string
 }
@@ -80,8 +91,11 @@ export interface LocationContent {
   title: string
   venue: string
   address: string
+  coordinates: {
+    lat: number
+    lng: number
+  }
   directions: string[]
-  mapEmbedUrl: string
   mapFallbackImage: {
     src: string
     alt: string
@@ -119,15 +133,13 @@ export interface GalleryContent {
 
 export interface FooterContent {
   license: string
-}
-
-export interface GameEntryContent {
   teaserLabel: string
   panelTitle: string
   panelDescription: string
 }
 
 export interface SiteContent {
+  meta: SiteMetaContent
   couple: CoupleProfile
   hero: HeroContent
   invitation: InvitationContent
@@ -137,6 +149,5 @@ export interface SiteContent {
   accounts: AccountsContent
   gallery: GalleryContent
   footer: FooterContent
-  gameEntry: GameEntryContent
   sections: NavItem[]
 }

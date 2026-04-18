@@ -1,42 +1,46 @@
-import type { SiteContent } from '../types/site'
+import type { SiteContent } from '../types/site';
 
 export const siteContent: SiteContent = {
+  meta: {
+    title: '용상언 & 최은진의 결혼식에 초대합니다',
+    description: '용상언 · 최은진 결혼식 초대장',
+    faviconSrc: '/favicon.svg',
+  },
   couple: {
-    groom: '김지훈',
-    bride: '이민아',
+    groom: '용상언',
+    bride: '최은진',
   },
   hero: {
     eyebrow: 'Save Our Date',
-    dateLabel: '2024. 11. 23',
+    dateLabel: '2026. 07. 11',
     timeLabel: '토요일 오후 12시 30분',
     image: {
-      src: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCCbnAcJpx-xJ2UV8NcSGAGWZ8Ntdemro9rtOatDiyGJg_B1KAUfbKJHg95KnbLoFrYbipDby0e8YH4KlK0_T1qB5a9LkeNDhyfHtq7aT4-q2kvDhmURrYG5DBxzXBmpHcTVLejpVYUsHSZlSYfe_tFf8X19955mjUtx3OrQiQP6TL3OBjQiYrqJrfb5ODYacGS0eFTVgyXs6vt3iEU-CagJYosT2z_QTfETuEXbM3DCwMVbAEafokLkINBfCuGKNaaOAkfSOpEJWk',
+      src: '/images/wedding/hero/cover.jpeg',
       alt: '한옥 사이에 선 신랑 신부 웨딩 사진',
     },
   },
   invitation: {
     headline: [
-      '계절의 문턱에서',
-      '우리의 가장 찬란한 순간을',
-      '함께하고 싶습니다.',
+      '연구실에서 만난 작은 인연이',
+      '삶을 함께하는 약속으로 이어집니다.',
       '',
-      '두 사람이 하나 되어 걷는',
-      '첫 걸음을 축복해 주세요.',
+      '소중한 걸음 하시어 함께 축복해 주시면',
+      '더없는 기쁨이겠습니다.',
     ],
     closingIconLabel: '초대의 마음',
   },
   family: {
     groom: {
       roleLabel: '신랑 혼주',
-      parents: ['김철수', '박영희'],
-      relation: '의 아들',
-      name: '지훈',
+      parents: [{ name: '용웅순' }, { name: '손선희' }],
+      relation: '의 장남',
+      name: '상언',
     },
     bride: {
       roleLabel: '신부 혼주',
-      parents: ['이상혁', '최윤서'],
-      relation: '의 딸',
-      name: '민아',
+      parents: [{ name: '최경삼', deceased: true }, { name: '김병애' }],
+      relation: '의 차녀',
+      name: '은진',
     },
   },
   eventDetails: {
@@ -51,40 +55,42 @@ export const siteContent: SiteContent = {
         id: 'venue',
         icon: 'location',
         label: '장소',
-        value: ['서울 호텔, 2층', '그랜드 볼룸'],
+        value: ['더휴웨딩홀'],
       },
     ],
   },
   location: {
     title: '오시는 길',
-    venue: '서울 호텔 그랜드 볼룸',
-    address: '서울 중구 을지로 30, 2층 그랜드 볼룸',
+    venue: '더휴웨딩홀',
+    address: '서울 강남구 테헤란로 407, 이케이타워 (EK-Tower) 2층',
+    coordinates: {
+      lat: 37.505387,
+      lng: 127.050125,
+    },
     directions: [
-      '지하철 2호선 을지로입구역 5번 출구에서 도보 7분',
-      '예식장 지하 주차장 2시간 무료 이용 가능',
+      '지하철 2호선/수인분당선 선릉역 10번 출구 도보 1분',
+      '접수처 도장 날인시 지하 주차장 2시간 무료 이용 가능',
       '혼잡 시간대에는 대중교통 이용을 권장드립니다.',
     ],
-    mapEmbedUrl:
-      'https://www.openstreetmap.org/export/embed.html?bbox=126.9752%2C37.5654%2C126.9838%2C37.5708&layer=mapnik&marker=37.5681%2C126.9795',
     mapFallbackImage: {
-      src: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAklogvz84IOL3UQJTGtyjFp2MyMTqV1jArqtPFGPmhG9pTtDDYG1EkHSqJnEOfaQ8VWx0G-idfdjiklW4TcHevsHut1ug3TlBVA2oiyvqm_AovuEHXFXpbl3Tl2UPmxcy25tzYDVz1KGih5Zgp0Z--q0a00Z2MmsQF2oz21cAHh2m7co5OAqTtlzcPOh9GbGixfpS2l3dloiTSpyoliF85YJi0RCZT3B3-DBRjPlW3uE6DgpPt3WOxod1td0IuzLjo3CYyZ-aCykw',
+      src: '/images/wedding/location/map-fallback.jpg',
       alt: '예식장 위치 안내 지도 이미지',
     },
     mapLinks: [
       {
         provider: 'NAVER',
         label: '네이버지도',
-        href: 'https://map.naver.com/p/search/%EC%84%9C%EC%9A%B8%20%ED%98%B8%ED%85%94',
+        href: 'https://naver.me/FSwbdsM1',
       },
       {
         provider: 'KAKAO',
         label: '카카오맵',
-        href: 'https://map.kakao.com/link/search/%EC%84%9C%EC%9A%B8%20%ED%98%B8%ED%85%94',
+        href: 'https://place.map.kakao.com/18574260',
       },
       {
         provider: 'T-MAP',
         label: '티맵',
-        href: 'tmap://search?name=%EC%84%9C%EC%9A%B8%20%ED%98%B8%ED%85%94',
+        href: 'https://tmap.life/e457e377',
       },
     ],
   },
@@ -98,42 +104,35 @@ export const siteContent: SiteContent = {
       {
         bank: '신한은행',
         accountNumber: '110-123-456789',
-        holder: '신랑 김지훈',
+        holder: '신랑 용상언',
         side: 'groom',
         relationship: '신랑',
       },
       {
         bank: '국민은행',
         accountNumber: '123456-01-987654',
-        holder: '혼주 김철수',
+        holder: '혼주 용웅순',
         side: 'groom',
         relationship: '혼주',
       },
       {
         bank: '농협은행',
         accountNumber: '302-0000-1111-22',
-        holder: '혼주 박영희',
+        holder: '혼주 손선희',
         side: 'groom',
         relationship: '혼주',
       },
       {
         bank: '우리은행',
-        accountNumber: '1002-987-654321',
-        holder: '신부 이민아',
+        accountNumber: '1002-563-202636',
+        holder: '신부 최은진',
         side: 'bride',
         relationship: '신부',
       },
       {
-        bank: '기업은행',
-        accountNumber: '010-1234-5678-90',
-        holder: '혼주 이상혁',
-        side: 'bride',
-        relationship: '혼주',
-      },
-      {
-        bank: '하나은행',
-        accountNumber: '123-456789-00107',
-        holder: '혼주 최윤서',
+        bank: '농협은행',
+        accountNumber: '121031-56-241410',
+        holder: '혼주 김병애',
         side: 'bride',
         relationship: '혼주',
       },
@@ -145,52 +144,50 @@ export const siteContent: SiteContent = {
     items: [
       {
         id: 'gallery-1',
-        src: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCY58malGOCe_NKfBQVuDhLndqOh7lUkKE80yNC_3mb5uZ-ihzwNGqQq8Y_r73G1JrlPE8AY9hIHBPRelyjj4trSzEqv-Dxru901QrggAF4rF0jj7r4plBWB7IftJkJasQVOA0OJeLDxVHdi0S8EtgsFi0RmNLtt4NIYCUl6nnaqkUtvLCU8jFzM_G35BGEfJ2BFyVlZt18-uhqVYbqrn25pSXyMn5AR097lwWh5mYqBKrtUNT1p8EGg89pIhQSXoNOouZb395yz2U',
+        src: '/images/wedding/gallery/gallery-1.jpg',
         alt: '웨딩 갤러리 사진 1',
         ratio: '1 / 1',
       },
       {
         id: 'gallery-2',
-        src: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDPLmhNKrMmcsrnFfT-uv0CCAkFspkrpyRYywT4siMmU92LPYhFfFLY3jF4bQy6aBsY2rcEXb-U1Q8Fj2jiMqMolFBybaog4267bJeSr2pZKE_5xlh76Gpdy_KLHrmPdzNe9TfXewk_MwiM1Y7uVlt9-dwsBDvduEq1JXze2dPpX-gVjc2D6CoKTuLV5qhaLTUmVSSvCXI0kLxf4aQvMp-MKX_7zOwmDWQmPoVc4HvzKKxTpoVw4Y3LIVsd_B4dMiLn8_e_5-NoeGo',
+        src: '/images/wedding/gallery/gallery-2.jpg',
         alt: '웨딩 갤러리 사진 2',
         ratio: '1 / 1',
       },
       {
         id: 'gallery-3',
-        src: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBcR2CLzv6to3ZnXrNAxKnbiNcJZGfRYj80gtEuNPxOj9ncP2R914LCI4keKhcbsVEVJ_l0XabY5agCJHABxf-XUAb_2i-nAwbkkEwcAP4w1IqQkfoAaY1NwRA51QYGI3vGNTjNe-ZY_vouXfLkOSgxgJsBboYqUxYh8D5VrGmgLsvH5mt2tLPAqbDYWwcTchKmtCYf2RoNhB5wQfhCCAH2jGVrYxZIkXvzXyPQSrMSKR4K0QL_DRAhjgnYmnGF2oyjUQKpJRnafWc',
+        src: '/images/wedding/gallery/gallery-3.jpg',
         alt: '웨딩 갤러리 사진 3',
         ratio: '1 / 1',
       },
       {
         id: 'gallery-4',
-        src: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCMAzGPHeJVROqu5BsuPaabYnsxCjoJt-PssZRsQiZr2JLwCWL8TymFAjybGRNJKgD-LTpN5M5JgvOs49GXyqAt5PpYg2-V4naWKCYr-s9egd41FKXcNUGDc-HaWAKRG7RX4ADDuW8n0MiFmc2lGA7X-K2zhZ7KXIO9-V56UJWIkh4_NKTMy48cjWlyWX2b-RuOQ3RSm9nf0jEiJcxvNtZrWgbuUBQBmLqhZ78RoSqPC1CRzXNyyv_ykQtk5NH2Lh1JebIZwP4bLHg',
+        src: '/images/wedding/gallery/gallery-4.jpg',
         alt: '웨딩 갤러리 사진 4',
         ratio: '4 / 3',
       },
       {
         id: 'gallery-5',
-        src: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBBO44hLvmVKDsufXU1H9sGHc7MvbvIWCkb2755si83LVLo7D_EK9hlYam8qQ2RT-IdZJZf_jjOWTAhNy_XTJDqnp9ch3OBwJJFx0yJMjupXnt8pNLiUxBOToPpniQDaAuXNghjkESPy0WyRxvfP8eL6xmUgnvpYgHg4LgmEGxm5p7zAUTUZnkyTBRJq_AXdaVGPQPQg9XD5oh8X5YbW9F0ES7Z_7CmVMRAlWssNhgh3ydci0lMAJmD0bOLmJRzbeX2o-HvEcek0tI',
+        src: '/images/wedding/gallery/gallery-5.jpg',
         alt: '웨딩 갤러리 사진 5',
         ratio: '3 / 4',
       },
       {
         id: 'gallery-6',
-        src: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAeB7o8tmGT7LqoWsI71tExIGQIuL6GgORiCMncdDC8gPT0gb-kWWWJwX3kaUcMAyZ7CVrO4b_eN4JgSEZGAtbMACLLbrOguRCJnKlzW2QVlL7oVn_GMEs4wdZ_Ezq9fR377MIqp6MuG-N2Ql6F3eim5sn6IcqkE2fIiHofzTxIdtJLxewE2a_zS0YSVG1GYzjWTgTg--dXpTxJSxoo7loeB3NWwvZPFi3TzgsDEWt52k19BNLqJqDA6b8n5wLSBH2EyIxwkiNCyrE',
+        src: '/images/wedding/gallery/gallery-6.jpg',
         alt: '웨딩 갤러리 사진 6',
         ratio: '1 / 1',
       },
       {
         id: 'gallery-7',
-        src: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAhBLO2QY4VZXtFcw2C13Fj47GLN4Uwi3IysoUTN8X7xJrW5Ak_qgJbDjKgbnsYdSOb7JA0BUmcC1N1k4uuOjBIt8Z9fmvmuDKChDYkcqj79Y4MebP2hJnRoEb079sTAGWLSY_VXFX7okUcGa6nYuhf0m9t92b-82EDF4gFoEDqDnjxP-PYjSM9v96z2KZOMQB6af6w6kvq39Nn1Fz3cXMLyHnHkftx01pGHOPp29Pb4eVdv7BFFM7EIdNmBTo4-pIy0sBr9Ok8Qeg',
+        src: '/images/wedding/gallery/gallery-7.jpg',
         alt: '웨딩 갤러리 사진 7',
         ratio: '16 / 9',
       },
     ],
   },
   footer: {
-    license: '© 2024 Ji-hoon & Min-ah. Crafted with love.',
-  },
-  gameEntry: {
+    license: '© 2026 Sangeon & Eunjin. Crafted with love.',
     teaserLabel: '작은 비밀 열기',
     panelTitle: 'Secret Arcade',
     panelDescription:
@@ -228,4 +225,4 @@ export const siteContent: SiteContent = {
       sectionId: 'gallery',
     },
   ],
-}
+};

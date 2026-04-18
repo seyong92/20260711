@@ -1,4 +1,5 @@
 import type { FamilyContent, NavItem } from '../types/site'
+import { Reveal } from './Reveal'
 
 interface FamilyInfoProps {
   section: NavItem
@@ -14,10 +15,18 @@ function FamilyRow({
   return (
     <div className="family-row">
       <div className="family-row__parents">
-        <p>{roleLabel}</p>
-        {parents.map((parent) => (
-          <strong key={parent}>{parent}</strong>
-        ))}
+        <p className="family-row__role-label">{roleLabel}</p>
+        <div className="family-row__parent-list">
+          {parents.map((parent) => (
+            <strong
+              key={`${parent.name}-${parent.deceased ? 'deceased' : 'living'}`}
+              className={parent.deceased ? 'family-row__parent is-deceased' : 'family-row__parent'}
+            >
+              {parent.deceased ? <span className="family-row__deceased-mark">故</span> : null}
+              <span>{parent.name}</span>
+            </strong>
+          ))}
+        </div>
       </div>
       <div className="family-row__relation">{relation}</div>
       <div className="family-row__child">{name}</div>
@@ -28,9 +37,13 @@ function FamilyRow({
 export function FamilyInfo({ section, family }: FamilyInfoProps) {
   return (
     <section id={section.sectionId} className="section section--family">
-      <FamilyRow {...family.groom} />
+      <Reveal delay={40}>
+        <FamilyRow {...family.groom} />
+      </Reveal>
       <div className="family-divider" />
-      <FamilyRow {...family.bride} />
+      <Reveal delay={140}>
+        <FamilyRow {...family.bride} />
+      </Reveal>
     </section>
   )
 }

@@ -1,3 +1,5 @@
+import { Reveal } from './Reveal'
+
 interface SectionHeadingProps {
   title: string
   subtitle?: string
@@ -10,9 +12,9 @@ export function SectionHeading({
   centered = true,
 }: SectionHeadingProps) {
   return (
-    <div className={`section-heading${centered ? ' is-centered' : ''}`}>
+    <Reveal className={`section-heading${centered ? ' is-centered' : ''}`}>
       <h2>{title}</h2>
       {subtitle ? <p>{subtitle}</p> : null}
-    </div>
+    </Reveal>
   )
 }

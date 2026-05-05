@@ -6,6 +6,7 @@ export interface DifficultyConfig {
   description: string;
   startHp: number;
   startMaxHp: number;
+  hitDamage: number;
   dropPowerupsOnHit: boolean;
   bossHpMultiplier: number;
   bossCooldownMultiplier: number;
@@ -29,12 +30,13 @@ export const DIFFICULTY_CONFIGS: Record<DifficultyId, DifficultyConfig> = {
   easy: {
     id: 'easy',
     label: 'EASY',
-    description: 'HP 5 / 파워업 드랍 없음',
-    startHp: 5,
-    startMaxHp: 5,
+    description: 'HP 5 / 반칸 피해 / 파워업 드랍 없음',
+    startHp: 10,
+    startMaxHp: 10,
+    hitDamage: 1,
     dropPowerupsOnHit: false,
     bossHpMultiplier: 1,
-    bossCooldownMultiplier: 1,
+    bossCooldownMultiplier: 1.35,
     bossItemSequence: [...EASY_BOSS_ITEM_SEQUENCE, 'heart', 'star'],
     cameraShotCount: 1,
     pianoBouquetBurstCount: 1,
@@ -44,8 +46,9 @@ export const DIFFICULTY_CONFIGS: Record<DifficultyId, DifficultyConfig> = {
     id: 'hard',
     label: 'HARD',
     description: '강화된 스테이지 / 보스 패턴',
-    startHp: 3,
-    startMaxHp: 3,
+    startHp: 6,
+    startMaxHp: 6,
+    hitDamage: 2,
     dropPowerupsOnHit: true,
     bossHpMultiplier: 1.5,
     bossCooldownMultiplier: 0.8,

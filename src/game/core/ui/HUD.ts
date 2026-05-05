@@ -1,6 +1,6 @@
 import Phaser from 'phaser'
 
-import { GAME_WIDTH, ITEM_MIN_Y } from '../constants'
+import { GAME_WIDTH, ITEM_MIN_Y, TILE_SIZE } from '../constants'
 
 type HudTextTheme = 'dark' | 'light'
 
@@ -10,6 +10,7 @@ const BOSS_HP_X = (GAME_WIDTH - BOSS_HP_WIDTH) / 2
 const BOSS_HP_Y = ITEM_MIN_Y - 34
 
 export class HUD {
+  private hpBackIcons: Phaser.GameObjects.Image[] = []
   private hpIcons: Phaser.GameObjects.Image[] = []
   private powerIcons: Phaser.GameObjects.Image[] = []
   private scoreText: Phaser.GameObjects.Text
@@ -98,19 +99,25 @@ export class HUD {
   }
 
   updateHP(current: number, max: number) {
-    const baseVisibleCount = 3
-    const bonusVisibleCount = max > 3 ? Math.max(0, max - 3) : 0
-    const visibleCount = baseVisibleCount + bonusVisibleCount
+    const visibleCount = Math.ceil(max / 2)
     this.ensureHpIcons(visibleCount)
 
     for (let index = 0; index < this.hpIcons.length; index++) {
       if (index < visibleCount) {
-        this.hpIcons[index].setVisible(true)
-        const isFilled = index < current
-        this.hpIcons[index].setFrame(0)
-        this.hpIcons[index].setTint(isFilled ? 0xffffff : 0x2f3340)
-        this.hpIcons[index].setAlpha(isFilled ? 1 : 0.5)
+        const filledUnits = Phaser.Math.Clamp(current - index * 2, 0, 2)
+        this.hpBackIcons[index].setVisible(true)
+        this.hpIcons[index]
+          .setVisible(filledUnits > 0)
+          .setFrame(0)
+          .setTint(0xffffff)
+          .setAlpha(1)
+        if (filledUnits === 1) {
+          this.hpIcons[index].setCrop(0, 0, TILE_SIZE / 2, TILE_SIZE)
+        } else {
+          this.hpIcons[index].setCrop()
+        }
       } else {
+        this.hpBackIcons[index].setVisible(false)
         this.hpIcons[index].setVisible(false)
       }
     }
@@ -119,10 +126,17 @@ export class HUD {
   private ensureHpIcons(max: number) {
     while (this.hpIcons.length < max) {
       const index = this.hpIcons.length
+      const back = this.container.scene.add
+        .image(24 + index * 24, 26, 'item-pickups', 0)
+        .setDisplaySize(23, 23)
+        .setTint(0x2f3340)
+        .setAlpha(0.5)
       const heart = this.container.scene.add
         .image(24 + index * 24, 26, 'item-pickups', 0)
         .setDisplaySize(23, 23)
+      this.hpBackIcons.push(back)
       this.hpIcons.push(heart)
+      this.container.add(back)
       this.container.add(heart)
     }
   }

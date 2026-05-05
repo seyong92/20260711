@@ -249,7 +249,7 @@ function generateSpawns(stageId: number, difficultyId: DifficultyId = getSelecte
         y: getSpawnY(spawn.enemyType, count, stageId * 11 + waveIndex * 5 + spawnIndex),
         dropItem: spawn.dropItem,
         patternOverride: spawn.patternOverride,
-        shotCountOverride: difficultyId === 'easy' && stageId === 1 ? 0 : spawn.shotCountOverride,
+        shotCountOverride: getShotCountOverride(stageId, difficultyId, spawn),
       })
       currentTime += intraGap
     })
@@ -258,6 +258,12 @@ function generateSpawns(stageId: number, difficultyId: DifficultyId = getSelecte
   })
 
   return spawns
+}
+
+function getShotCountOverride(stageId: number, difficultyId: DifficultyId, spawn: WaveSpawn) {
+  if (difficultyId === 'easy' && stageId === 1) return 0
+  if (difficultyId === 'easy' && stageId === 3 && spawn.enemyType === 'invitation') return 1
+  return spawn.shotCountOverride
 }
 
 export const STAGES: StageConfig[] = [

@@ -569,7 +569,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.powerLevel = Math.max(this.powerLevel - 1, 0);
       runState.setPowerLevel(this.powerLevel);
     }
-    this.hp--;
+    this.hp = Math.max(0, this.hp - difficulty.hitDamage);
     runState.setHp(this.hp);
     scoreManager.penalizeHit();
     this.attackAnimationUntil = 0;
@@ -591,15 +591,15 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   collectHeart(): HeartCollectResult {
     if (this.maxHp < RUN_MAX_HP_CAP) {
-      this.maxHp += 1;
-      this.hp = Math.min(this.maxHp, this.hp + 1);
+      this.maxHp = Math.min(RUN_MAX_HP_CAP, this.maxHp + 2);
+      this.hp = Math.min(this.maxHp, this.hp + 2);
       runState.setMaxHp(this.maxHp);
       runState.setHp(this.hp);
       return 'hp-up';
     }
 
     if (this.hp < this.maxHp) {
-      this.heal(1);
+      this.heal(2);
       return 'hp-up';
     }
 

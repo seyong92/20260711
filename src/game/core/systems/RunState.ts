@@ -1,8 +1,8 @@
 import { POWERUP_MAX_LEVEL } from '../../content/items'
 import { getDifficultyConfig } from '../../content/difficulty'
 
-const BASE_MAX_HP = 3
-const MAX_HP_CAP = 5
+const BASE_MAX_HP = 6
+const MAX_HP_CAP = 10
 
 export interface RunSnapshot {
   hp: number
@@ -39,7 +39,7 @@ class RunState {
     this.snapshot.hp = Math.min(this.snapshot.hp, this.snapshot.maxHp)
   }
 
-  increaseMaxHp(amount = 1) {
+  increaseMaxHp(amount = 2) {
     this.setMaxHp(this.snapshot.maxHp + amount)
   }
 

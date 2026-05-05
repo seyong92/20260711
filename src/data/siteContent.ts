@@ -1,10 +1,13 @@
-import type { SiteContent } from '../types/site';
+import { buildAppPath } from '../lib/routes'
+import type { SiteContent } from '../types/site'
+
+const publicAssetPath = buildAppPath
 
 export const siteContent: SiteContent = {
   meta: {
     title: '용상언 & 최은진의 결혼식에 초대합니다',
     description: '용상언 · 최은진 결혼식 초대장',
-    faviconSrc: '/favicon.png',
+    faviconSrc: publicAssetPath('/favicon.png'),
     faviconType: 'image/png',
   },
   couple: {
@@ -16,7 +19,7 @@ export const siteContent: SiteContent = {
     dateLabel: '2026. 07. 11',
     timeLabel: '토요일 오후 12시 30분',
     image: {
-      src: '/images/wedding/hero/cover.jpeg',
+      src: publicAssetPath('/images/wedding/hero/cover.jpeg'),
       alt: '한옥 사이에 선 신랑 신부 웨딩 사진',
     },
   },
@@ -74,7 +77,7 @@ export const siteContent: SiteContent = {
       '혼잡 시간대에는 대중교통 이용을 권장드립니다.',
     ],
     mapFallbackImage: {
-      src: '/images/wedding/location/map-fallback.jpg',
+      src: publicAssetPath('/images/wedding/location/map-fallback.jpg'),
       alt: '예식장 위치 안내 지도 이미지',
     },
     mapLinks: [
@@ -138,43 +141,43 @@ export const siteContent: SiteContent = {
     items: [
       {
         id: 'gallery-1',
-        src: '/images/wedding/gallery/gallery-1.jpg',
+        src: publicAssetPath('/images/wedding/gallery/gallery-1.jpg'),
         alt: '웨딩 갤러리 사진 1',
         ratio: '1 / 1',
       },
       {
         id: 'gallery-2',
-        src: '/images/wedding/gallery/gallery-2.jpg',
+        src: publicAssetPath('/images/wedding/gallery/gallery-2.jpg'),
         alt: '웨딩 갤러리 사진 2',
         ratio: '1 / 1',
       },
       {
         id: 'gallery-3',
-        src: '/images/wedding/gallery/gallery-3.jpg',
+        src: publicAssetPath('/images/wedding/gallery/gallery-3.jpg'),
         alt: '웨딩 갤러리 사진 3',
         ratio: '1 / 1',
       },
       {
         id: 'gallery-4',
-        src: '/images/wedding/gallery/gallery-4.jpg',
+        src: publicAssetPath('/images/wedding/gallery/gallery-4.jpg'),
         alt: '웨딩 갤러리 사진 4',
         ratio: '4 / 3',
       },
       {
         id: 'gallery-5',
-        src: '/images/wedding/gallery/gallery-5.jpg',
+        src: publicAssetPath('/images/wedding/gallery/gallery-5.jpg'),
         alt: '웨딩 갤러리 사진 5',
         ratio: '3 / 4',
       },
       {
         id: 'gallery-6',
-        src: '/images/wedding/gallery/gallery-6.jpg',
+        src: publicAssetPath('/images/wedding/gallery/gallery-6.jpg'),
         alt: '웨딩 갤러리 사진 6',
         ratio: '1 / 1',
       },
       {
         id: 'gallery-7',
-        src: '/images/wedding/gallery/gallery-7.jpg',
+        src: publicAssetPath('/images/wedding/gallery/gallery-7.jpg'),
         alt: '웨딩 갤러리 사진 7',
         ratio: '16 / 9',
       },

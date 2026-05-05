@@ -39,6 +39,7 @@ const HIDDEN_CODE: HiddenCodeInput[] = [
   'right',
   'right',
 ]
+const HIDDEN_CODE_HINT_TEXT = '→ → →  ← ← ←  → → → → → → → 을 눌러보세요'
 const CUTSCENE_CODE = 'kaist11'
 const DEBUG_OPTIONS_CODE = 'dgist15'
 const STAGE_SKIP_CODES: Record<string, number> = {
@@ -109,12 +110,16 @@ const TITLE_SPARKLES: [number, number, number][] = [
   [88, 151, 2],
   [339, 84, 3],
   [360, 155, 4],
-  [322, 505, 2],
 ]
 
 function getDifficultyOptionIndex(id: DifficultyId) {
   const index = DIFFICULTY_OPTIONS.indexOf(id)
   return index >= 0 ? index : DIFFICULTY_OPTIONS.indexOf(DEFAULT_DIFFICULTY_ID)
+}
+
+function hasBrideGameClear() {
+  const snapshot = progressStorage.getSnapshot()
+  return DIFFICULTY_OPTIONS.some((difficulty) => snapshot.modes.bride[difficulty].stageClears[2] > 0)
 }
 
 export class TitleScene extends Phaser.Scene {
@@ -235,14 +240,31 @@ export class TitleScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true })
       .setDepth(14)
 
-    const startPulseTween = this.tweens.add({
-      targets: [startText, achievementsText],
-      alpha: { from: 1, to: 0.55 },
-      scale: { from: 1, to: 1.035 },
-      duration: 700,
+    const dragonHintText = this.add
+      .text(GAME_WIDTH / 2, GAME_HEIGHT * 0.5, HIDDEN_CODE_HINT_TEXT, {
+        fontFamily: '"Apple SD Gothic Neo", "Noto Sans KR", sans-serif',
+        fontSize: '15px',
+        color: '#fff7c7',
+        fontStyle: 'bold',
+        stroke: '#0c1020',
+        strokeThickness: 5,
+        align: 'center',
+      })
+      .setOrigin(0.5)
+      .setDepth(14)
+    const dragonHintBlinkTween = this.tweens.add({
+      targets: dragonHintText,
+      alpha: { from: 1, to: 0.42 },
+      duration: 820,
       yoyo: true,
       repeat: -1,
+      ease: 'Sine.easeInOut',
+      paused: true,
     })
+    let dragonHintTransitionLocked = false
+
+    const mainMenuTexts = [startText, achievementsText]
+    let mainMenuPulseTween: Phaser.Tweens.Tween | null = null
 
     let mobileStartText: Phaser.GameObjects.Text | null = null
     const getContentObjects = (): FadableGameObject[] =>
@@ -254,6 +276,21 @@ export class TitleScene extends Phaser.Scene {
         titleSparkles,
         mobileStartText,
       ].filter(Boolean) as FadableGameObject[])
+
+    const updateDragonHint = () => {
+      const shouldShow = !dragonHintTransitionLocked && !this.dragonSelected && hasBrideGameClear()
+      dragonHintText.setVisible(shouldShow)
+      dragonHintText.setColor(modeStyle.accentColor)
+      if (shouldShow) {
+        if (!dragonHintBlinkTween.isPlaying()) {
+          dragonHintText.setAlpha(1)
+          dragonHintBlinkTween.resume()
+        }
+      } else {
+        dragonHintBlinkTween.pause()
+      }
+    }
+    updateDragonHint()
 
     const runStripeWipe = (phase: 'cover' | 'reveal', onComplete: () => void) => {
       transitionStripes.forEach((stripe, index) => {
@@ -299,12 +336,22 @@ export class TitleScene extends Phaser.Scene {
     drawModeDecorations()
 
     const updateMainMenu = () => {
-      ;[startText, achievementsText].forEach((text, index) => {
+      mainMenuPulseTween?.stop()
+      mainMenuPulseTween = null
+      mainMenuTexts.forEach((text, index) => {
         const selected = index === mainMenuSelectedIndex
         text.setText(`${selected ? '▶ ' : '  '}${TITLE_MENU_OPTIONS[index]}`)
         text.setColor(selected ? modeStyle.accentColor : '#e0e0e0')
         text.setAlpha(selected ? 1 : 0.74)
         text.setScale(selected ? 1.04 : 1)
+      })
+      mainMenuPulseTween = this.tweens.add({
+        targets: mainMenuTexts[mainMenuSelectedIndex],
+        scale: { from: 1.04, to: 1.075 },
+        duration: 720,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
       })
     }
     updateMainMenu()
@@ -330,6 +377,7 @@ export class TitleScene extends Phaser.Scene {
       subtitleText.setText(modeContent.subtitle)
       subtitleText.setY(modeStyle.subtitleY)
       subtitleText.setColor(modeStyle.subtitleColor)
+      updateDragonHint()
       updateMainMenu()
       mobileStartText?.setText(TITLE_MENU_OPTIONS[0])
     }
@@ -338,7 +386,11 @@ export class TitleScene extends Phaser.Scene {
       if (this.modeTransitioning) return
       this.modeTransitioning = true
       this.hiddenCodeIndex = 0
-      startPulseTween.pause()
+      dragonHintTransitionLocked = true
+      dragonHintBlinkTween.pause()
+      dragonHintText.setAlpha(0)
+      dragonHintText.setVisible(false)
+      mainMenuPulseTween?.pause()
       const contentObjects = getContentObjects()
       this.tweens.add({
         targets: contentObjects,
@@ -363,7 +415,9 @@ export class TitleScene extends Phaser.Scene {
             duration: 120,
             ease: 'Quad.easeOut',
             onComplete: () => {
-              startPulseTween.resume()
+              mainMenuPulseTween?.resume()
+              dragonHintTransitionLocked = false
+              updateDragonHint()
               this.modeTransitioning = false
             },
           })
@@ -388,6 +442,7 @@ export class TitleScene extends Phaser.Scene {
       difficultyPanel = null
       startText.setVisible(true)
       achievementsText.setVisible(true)
+      updateDragonHint()
       mobileStartText?.setVisible(true)
     }
 
@@ -400,6 +455,7 @@ export class TitleScene extends Phaser.Scene {
       achievementsMinScrollY = 0
       startText.setVisible(true)
       achievementsText.setVisible(true)
+      updateDragonHint()
       mobileStartText?.setVisible(true)
     }
 
@@ -506,18 +562,30 @@ export class TitleScene extends Phaser.Scene {
       }
       startText.setVisible(false)
       achievementsText.setVisible(false)
+      dragonHintText.setVisible(false)
       mobileStartText?.setVisible(false)
       const container = this.add.container(0, 0).setDepth(120)
       difficultyPanel = container
       const texts: Phaser.GameObjects.Text[] = []
+      let difficultyPulseTween: Phaser.Tweens.Tween | null = null
 
       const updateSelection = () => {
+        difficultyPulseTween?.stop()
+        difficultyPulseTween = null
         DIFFICULTY_OPTIONS.forEach((id, index) => {
           const selected = index === difficultyPanelSelectedIndex
           texts[index].setText(selected ? `< ${id.toUpperCase()} >` : id.toUpperCase())
           texts[index].setColor(selected ? modeStyle.accentColor : '#e0e0e0')
           texts[index].setAlpha(selected ? 1 : 0.68)
           texts[index].setScale(selected ? 1.08 : 1)
+        })
+        difficultyPulseTween = this.tweens.add({
+          targets: texts[difficultyPanelSelectedIndex],
+          scale: { from: 1.08, to: 1.13 },
+          duration: 720,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
         })
       }
 
@@ -557,6 +625,7 @@ export class TitleScene extends Phaser.Scene {
       closeAchievementsPanel()
       startText.setVisible(false)
       achievementsText.setVisible(false)
+      dragonHintText.setVisible(false)
       mobileStartText?.setVisible(false)
 
       const snapshot = progressStorage.getSnapshot()

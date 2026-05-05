@@ -6,9 +6,22 @@
       name="description"
       content="Modern Hanok tone의 반응형 모바일 청첩장 웹앱"
     />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Wedding Invitation</title>
+    <script>
+      (function () {
+        var params = new URLSearchParams(window.location.search);
+        var redirectPath = params.get('p');
+        if (!redirectPath) return;
+
+        var nextUrl = redirectPath;
+        var preservedHash = params.get('h');
+        if (preservedHash) nextUrl += '#' + preservedHash;
+
+        window.history.replaceState(null, '', nextUrl);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

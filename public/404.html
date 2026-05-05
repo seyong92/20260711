@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Redirecting…</title>
+    <script>
+      (function () {
+        var pathname = window.location.pathname;
+        var search = window.location.search || '';
+        var hash = window.location.hash ? window.location.hash.slice(1) : '';
+        var parts = pathname.split('/').filter(Boolean);
+        var isProjectPage = parts.length > 1;
+        var basePath = isProjectPage ? '/' + parts[0] + '/' : '/';
+        var routePath = isProjectPage ? '/' + parts.slice(1).join('/') : pathname;
+        var next = basePath + '?p=' + encodeURIComponent(routePath + search);
+        if (hash) {
+          next += '&h=' + encodeURIComponent(hash);
+        }
+
+        window.location.replace(next);
+      })();
+    </script>
+  </head>
+  <body></body>
+</html>

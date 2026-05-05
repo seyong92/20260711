@@ -10,6 +10,10 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+output
+public/images/game/ending-credits
+엔딩 크레딧 이미지
+엔딩 크레딧 이미지
 *.tsbuildinfo
 *.local
 

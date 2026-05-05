@@ -1030,6 +1030,15 @@ img {
 .footer__secret-link {
   margin-top: 14px;
   opacity: 0.76;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+.footer__secret-link:hover,
+.footer__secret-link:focus-visible {
+  opacity: 1;
+  transform: translateY(-1px);
 }
 
 .game-slot {
@@ -1061,6 +1070,7 @@ img {
 .game-slot__inner p:last-child {
   margin: 0;
   color: var(--color-text-muted);
+  line-height: 1.6;
 }
 
 @media (min-width: 768px) {

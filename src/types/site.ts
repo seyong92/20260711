@@ -36,6 +36,7 @@ export interface SiteMetaContent {
   title: string
   description: string
   faviconSrc: string
+  faviconType?: string
 }
 
 export interface HeroContent {
@@ -135,7 +136,73 @@ export interface FooterContent {
   license: string
   teaserLabel: string
   panelTitle: string
-  panelDescription: string
+  gamePath: string
+  showGameEntry: boolean
+  secretTriggerCount: number
+  secretLabels: {
+    default: string
+    countdown: string
+    ready: string
+  }
+}
+
+export interface GameScoreApiConfig {
+  baseUrl: string
+  useMock: boolean
+  submissionsEnabled: boolean
+}
+
+export type GameModeId = 'bride' | 'dragon'
+export type StorySequenceId = 'intro' | 'afterStage1' | 'afterStage2' | 'ending'
+
+export interface StorySlide {
+  fileName?: string
+  caption: string
+  alt: string
+  variant?: 'image' | 'blackout'
+}
+
+export type StorySequences = Record<StorySequenceId, StorySlide[]>
+
+export interface GameModeContent {
+  title: string
+  subtitle: string
+  startLabel: string
+  titleStory: string[]
+  storySequences: StorySequences
+  victoryMessages: {
+    title: string
+    rescued: string
+    submitSuccess: string
+  }
+  retry: {
+    title: string
+    subtitle: string
+    backToTitle: string
+  }
+  uiLabels: {
+    gameOverTitle: string
+    introAdvanceHint: string
+    startHint: string
+    finalScoreLabel: string
+    playTimeLabel: string
+  }
+}
+
+export interface GameContent {
+  controlsHint: string
+  homeHrefLabel: string
+  scoreForm: {
+    nicknamePlaceholder: string
+    messagePlaceholder: string
+    submitLabel: string
+    leaderboardTitle: string
+    restartLabel: string
+    skipSubmitLabel: string
+    disabledNotice: string
+  }
+  scoreApi: GameScoreApiConfig
+  modes: Record<GameModeId, GameModeContent>
 }
 
 export interface SiteContent {
@@ -149,5 +216,6 @@ export interface SiteContent {
   accounts: AccountsContent
   gallery: GalleryContent
   footer: FooterContent
+  gameConfig: GameContent
   sections: NavItem[]
 }

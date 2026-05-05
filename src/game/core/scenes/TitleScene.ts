@@ -59,7 +59,12 @@ const CUTSCENE_SEQUENCE_OPTIONS: Array<{ id: StorySequenceId; label: string }> =
 const MODE_TRANSITION_STRIPE_COUNT = 14
 const MODE_TRANSITION_STRIPE_DURATION = 120
 const MODE_TRANSITION_STRIPE_STAGGER = 13
-const DIFFICULTY_OPTIONS: DifficultyId[] = ['easy', 'hard']
+const DIFFICULTY_OPTIONS: DifficultyId[] = ['easy', 'normal', 'hard']
+const DEFAULT_DIFFICULTY_ID: DifficultyId = 'normal'
+const STAGE_SELECT_DIFFICULTY_START_INDEX = 3
+const STAGE_SELECT_HITBOX_INDEX = STAGE_SELECT_DIFFICULTY_START_INDEX + DIFFICULTY_OPTIONS.length
+const STAGE_SELECT_START_INDEX = STAGE_SELECT_HITBOX_INDEX + 1
+const STAGE_SELECT_ROW_COUNT = STAGE_SELECT_START_INDEX + 1
 const TITLE_ACTION_X = GAME_WIDTH - 118
 const TITLE_MENU_OPTIONS = ['게임 시작', '도전 과제'] as const
 
@@ -107,6 +112,11 @@ const TITLE_SPARKLES: [number, number, number][] = [
   [322, 505, 2],
 ]
 
+function getDifficultyOptionIndex(id: DifficultyId) {
+  const index = DIFFICULTY_OPTIONS.indexOf(id)
+  return index >= 0 ? index : DIFFICULTY_OPTIONS.indexOf(DEFAULT_DIFFICULTY_ID)
+}
+
 export class TitleScene extends Phaser.Scene {
   private hiddenCodeIndex = 0
   private debugCodeBuffer = ''
@@ -143,7 +153,7 @@ export class TitleScene extends Phaser.Scene {
     let achievementsScrollThumb: Phaser.GameObjects.Rectangle | null = null
     let achievementsScrollY = 0
     let achievementsMinScrollY = 0
-    let difficultyPanelSelectedIndex = getSelectedDifficultyId() === 'hard' ? 1 : 0
+    let difficultyPanelSelectedIndex = getDifficultyOptionIndex(getSelectedDifficultyId())
     let stageSelectPanel: Phaser.GameObjects.Container | null = null
     let stageSelectStageIndex = 0
     let stageSelectDifficultyId = getSelectedDifficultyId()
@@ -492,7 +502,7 @@ export class TitleScene extends Phaser.Scene {
       closeCutsceneSelectPanel()
       closeDifficultyPanel()
       if (shouldResetSelection) {
-        difficultyPanelSelectedIndex = getSelectedDifficultyId() === 'hard' ? 1 : 0
+        difficultyPanelSelectedIndex = getDifficultyOptionIndex(getSelectedDifficultyId())
       }
       startText.setVisible(false)
       achievementsText.setVisible(false)
@@ -749,9 +759,12 @@ export class TitleScene extends Phaser.Scene {
 
       const getRowLabel = (index: number) => {
         if (index < STAGES.length) return `STAGE ${index + 1}: ${STAGES[index].name}`
-        if (index === 3) return `EASY ${stageSelectDifficultyId === 'easy' ? 'ON' : 'OFF'}`
-        if (index === 4) return `HARD ${stageSelectDifficultyId === 'hard' ? 'ON' : 'OFF'}`
-        if (index === 5) return `HITBOX ${isHitboxDebugEnabled() ? 'ON' : 'OFF'}`
+        const difficultyIndex = index - STAGE_SELECT_DIFFICULTY_START_INDEX
+        if (difficultyIndex >= 0 && difficultyIndex < DIFFICULTY_OPTIONS.length) {
+          const difficultyId = DIFFICULTY_OPTIONS[difficultyIndex]
+          return `${difficultyId.toUpperCase()} ${stageSelectDifficultyId === difficultyId ? 'ON' : 'OFF'}`
+        }
+        if (index === STAGE_SELECT_HITBOX_INDEX) return `HITBOX ${isHitboxDebugEnabled() ? 'ON' : 'OFF'}`
         return 'START'
       }
 
@@ -759,10 +772,12 @@ export class TitleScene extends Phaser.Scene {
         rows.forEach((text, index) => {
           const selected = index === stageSelectSelectedIndex
           const activeStage = index < STAGES.length && index === stageSelectStageIndex
+          const difficultyIndex = index - STAGE_SELECT_DIFFICULTY_START_INDEX
           const activeDifficulty =
-            (index === 3 && stageSelectDifficultyId === 'easy') ||
-            (index === 4 && stageSelectDifficultyId === 'hard')
-          const active = activeStage || activeDifficulty || (index === 5 && isHitboxDebugEnabled())
+            difficultyIndex >= 0 &&
+            difficultyIndex < DIFFICULTY_OPTIONS.length &&
+            stageSelectDifficultyId === DIFFICULTY_OPTIONS[difficultyIndex]
+          const active = activeStage || activeDifficulty || (index === STAGE_SELECT_HITBOX_INDEX && isHitboxDebugEnabled())
           text.setText(`${selected ? '> ' : '  '}${getRowLabel(index)}`)
           text.setColor(selected || active ? modeStyle.accentColor : '#e0e0e0')
           text.setAlpha(selected || active ? 1 : 0.72)
@@ -774,14 +789,17 @@ export class TitleScene extends Phaser.Scene {
       const activateRow = (index: number) => {
         stageSelectSelectedIndex = index
         if (index < STAGES.length) stageSelectStageIndex = index
-        else if (index === 3) stageSelectDifficultyId = 'easy'
-        else if (index === 4) stageSelectDifficultyId = 'hard'
-        else if (index === 5) toggleHitboxDebug()
+        else if (
+          index >= STAGE_SELECT_DIFFICULTY_START_INDEX &&
+          index < STAGE_SELECT_DIFFICULTY_START_INDEX + DIFFICULTY_OPTIONS.length
+        ) {
+          stageSelectDifficultyId = DIFFICULTY_OPTIONS[index - STAGE_SELECT_DIFFICULTY_START_INDEX]
+        } else if (index === STAGE_SELECT_HITBOX_INDEX) toggleHitboxDebug()
         else startStageDirectly(stageSelectStageIndex, stageSelectDifficultyId)
         updateSelection()
       }
 
-      for (let index = 0; index < 7; index++) {
+      for (let index = 0; index < STAGE_SELECT_ROW_COUNT; index++) {
         const y = panelY + 94 + index * 38
         const back = this.add
           .rectangle(GAME_WIDTH / 2, y, 270, 31, 0x172033, 0.88)
@@ -910,7 +928,12 @@ export class TitleScene extends Phaser.Scene {
         event.code === 'ArrowLeft' ||
         event.code === 'ArrowRight'
       ) {
-        difficultyPanelSelectedIndex = difficultyPanelSelectedIndex === 0 ? 1 : 0
+        const direction = event.code === 'ArrowUp' || event.code === 'ArrowLeft' ? -1 : 1
+        difficultyPanelSelectedIndex = Phaser.Math.Wrap(
+          difficultyPanelSelectedIndex + direction,
+          0,
+          DIFFICULTY_OPTIONS.length,
+        )
         difficultyPanel.destroy(true)
         difficultyPanel = null
         showDifficultyPanel(true)
@@ -920,12 +943,16 @@ export class TitleScene extends Phaser.Scene {
         startIntroWithDifficulty('easy')
         return true
       }
+      if (event.code === 'KeyN') {
+        startIntroWithDifficulty('normal')
+        return true
+      }
       if (event.code === 'KeyH') {
         startIntroWithDifficulty('hard')
         return true
       }
       if (event.code === 'Enter' || event.code === 'Space' || event.code === 'KeyZ' || event.code === 'KeyX') {
-        startIntroWithDifficulty(difficultyPanelSelectedIndex === 0 ? 'easy' : 'hard')
+        startIntroWithDifficulty(DIFFICULTY_OPTIONS[difficultyPanelSelectedIndex])
         return true
       }
       return true
@@ -963,12 +990,12 @@ export class TitleScene extends Phaser.Scene {
         return true
       }
       if (event.code === 'ArrowUp') {
-        stageSelectSelectedIndex = Phaser.Math.Wrap(stageSelectSelectedIndex - 1, 0, 7)
+        stageSelectSelectedIndex = Phaser.Math.Wrap(stageSelectSelectedIndex - 1, 0, STAGE_SELECT_ROW_COUNT)
         showStageSelectPanel(stageSelectStageIndex, true)
         return true
       }
       if (event.code === 'ArrowDown') {
-        stageSelectSelectedIndex = Phaser.Math.Wrap(stageSelectSelectedIndex + 1, 0, 7)
+        stageSelectSelectedIndex = Phaser.Math.Wrap(stageSelectSelectedIndex + 1, 0, STAGE_SELECT_ROW_COUNT)
         showStageSelectPanel(stageSelectStageIndex, true)
         return true
       }
@@ -982,6 +1009,11 @@ export class TitleScene extends Phaser.Scene {
         showStageSelectPanel(stageSelectStageIndex, true)
         return true
       }
+      if (event.code === 'KeyN') {
+        stageSelectDifficultyId = 'normal'
+        showStageSelectPanel(stageSelectStageIndex, true)
+        return true
+      }
       if (event.code === 'KeyH') {
         stageSelectDifficultyId = 'hard'
         showStageSelectPanel(stageSelectStageIndex, true)
@@ -989,9 +1021,12 @@ export class TitleScene extends Phaser.Scene {
       }
       if (event.code === 'Enter' || event.code === 'Space' || event.code === 'KeyZ' || event.code === 'KeyX') {
         if (stageSelectSelectedIndex < STAGES.length) stageSelectStageIndex = stageSelectSelectedIndex
-        else if (stageSelectSelectedIndex === 3) stageSelectDifficultyId = 'easy'
-        else if (stageSelectSelectedIndex === 4) stageSelectDifficultyId = 'hard'
-        else if (stageSelectSelectedIndex === 5) toggleHitboxDebug()
+        else if (
+          stageSelectSelectedIndex >= STAGE_SELECT_DIFFICULTY_START_INDEX &&
+          stageSelectSelectedIndex < STAGE_SELECT_DIFFICULTY_START_INDEX + DIFFICULTY_OPTIONS.length
+        ) {
+          stageSelectDifficultyId = DIFFICULTY_OPTIONS[stageSelectSelectedIndex - STAGE_SELECT_DIFFICULTY_START_INDEX]
+        } else if (stageSelectSelectedIndex === STAGE_SELECT_HITBOX_INDEX) toggleHitboxDebug()
         else {
           startStageDirectly(stageSelectStageIndex, stageSelectDifficultyId)
           return true

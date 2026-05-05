@@ -12,7 +12,7 @@ import { TrainBoss } from '../entities/bosses/TrainBoss'
 import { GAME_WIDTH, GROUND_Y } from '../constants'
 import { Enemy } from '../entities/Enemy'
 import { Item } from '../entities/Item'
-import { MOBILE_RANGED_AUTOFIRE_ENABLED, Player } from '../entities/Player'
+import { Player } from '../entities/Player'
 import { Bullet, BulletPool } from '../systems/BulletPool'
 import { HitboxDebugOverlay } from '../systems/HitboxDebugOverlay'
 import { getSelectedPlayerCharacter } from '../systems/PlayerSelection'
@@ -20,7 +20,6 @@ import { progressStorage } from '../systems/ProgressStorage'
 import { runState } from '../systems/RunState'
 import { CURRENT_STAGE_RESTART_SCORE_PENALTY, scoreManager } from '../systems/ScoreManager'
 import { ScrollManager } from '../systems/ScrollManager'
-import { AutofireToggle } from '../ui/AutofireToggle'
 import { HUD } from '../ui/HUD'
 import { PauseMenu } from '../ui/PauseMenu'
 import { TouchControls } from '../ui/TouchControls'
@@ -52,7 +51,6 @@ export class BossScene extends Phaser.Scene {
   private hud!: HUD
   private pauseMenu!: PauseMenu
   private controls!: TouchControls
-  private autofireToggle: AutofireToggle | null = null
   private droppedPowerups!: Phaser.Physics.Arcade.Group
   private bossMinions!: Phaser.Physics.Arcade.Group
   private stageIndex = 0
@@ -92,11 +90,7 @@ export class BossScene extends Phaser.Scene {
     this.player = new Player(this, 80, GROUND_Y - 48, getSelectedPlayerCharacter())
     this.player.setBulletPool(this.bulletPool)
     this.player.applyCarryState(this.carry?.player)
-    if (
-      MOBILE_RANGED_AUTOFIRE_ENABLED &&
-      !this.sys.game.device.os.desktop &&
-      this.player.canAutoFire()
-    ) {
+    if (getDifficultyConfig().defaultAutofire) {
       this.player.enableAutoFire()
     }
     this.physics.add.collider(this.player, this.scrollManager.getGround())
@@ -108,15 +102,6 @@ export class BossScene extends Phaser.Scene {
     this.hud.setTextTheme(stage.textTheme)
     this.hud.setStage(`BOSS ${stage.id}: ${stage.name}`)
     this.controls = new TouchControls(this)
-    this.autofireToggle = this.player.canAutoFire()
-      ? new AutofireToggle(this, {
-          getEnabled: () => this.player.isAutoFireEnabled(),
-          setEnabled: (enabled) => {
-            if (enabled) this.player.enableAutoFire()
-            else this.player.disableAutoFire()
-          },
-        })
-      : null
     this.pauseMenu = new PauseMenu(this, {
       onResume: () => this.resumeFromPauseMenu(),
       onRestart: () => this.restartFromPauseMenu(),
@@ -387,6 +372,7 @@ export class BossScene extends Phaser.Scene {
   }
 
   private unlockSpecialAchievements() {
+    if (getSelectedDifficultyId() === 'easy') return []
     const ids: AchievementId[] = []
     if (this.stageIndex === 0 && !runState.hasBossHit(0)) {
       ids.push('stage-1-train-no-hit')
@@ -756,8 +742,6 @@ export class BossScene extends Phaser.Scene {
   private cleanup() {
     this.input.keyboard?.off('keydown', this.onKeyDown, this)
     this.pauseMenu.destroy()
-    this.autofireToggle?.destroy()
-    this.autofireToggle = null
     this.controls.destroy()
     this.hud.destroy()
     this.debugOverlay.destroy()

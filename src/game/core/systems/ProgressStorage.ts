@@ -8,7 +8,8 @@ import {
 import type { PlayerCharacterId } from './PlayerSelection'
 
 const STORAGE_KEY = '__ygp0'
-const STORAGE_VERSION = 2
+const STORAGE_VERSION = 3
+const PREVIOUS_STORAGE_VERSION = 2
 const LEGACY_STORAGE_VERSION = 1
 const STAGE_COUNT = 3
 const MAX_COUNTER = 999_999_999
@@ -33,7 +34,7 @@ interface CompactProgressPayloadV1 {
 }
 
 interface CompactProgressPayloadV2 {
-  v: typeof STORAGE_VERSION
+  v: typeof PREVIOUS_STORAGE_VERSION
   u: string
   b: {
     e: CompactDifficultyProgress
@@ -47,7 +48,24 @@ interface CompactProgressPayloadV2 {
   g: 0 | 1
 }
 
-type CompactProgressPayload = CompactProgressPayloadV1 | CompactProgressPayloadV2
+interface CompactProgressPayloadV3 {
+  v: typeof STORAGE_VERSION
+  u: string
+  b: {
+    e: CompactDifficultyProgress
+    n: CompactDifficultyProgress
+    h: CompactDifficultyProgress
+  }
+  d: {
+    e: CompactDifficultyProgress
+    n: CompactDifficultyProgress
+    h: CompactDifficultyProgress
+  }
+  a: AchievementId[]
+  g: 0 | 1
+}
+
+type CompactProgressPayload = CompactProgressPayloadV1 | CompactProgressPayloadV2 | CompactProgressPayloadV3
 
 interface CompactProgressEnvelope {
   p: CompactProgressPayload
@@ -214,10 +232,12 @@ class ProgressStorage {
       modes: {
         bride: {
           easy: this.createEmptyDifficultyProgress(),
+          normal: this.createEmptyDifficultyProgress(),
           hard: this.createEmptyDifficultyProgress(),
         },
         dragon: {
           easy: this.createEmptyDifficultyProgress(),
+          normal: this.createEmptyDifficultyProgress(),
           hard: this.createEmptyDifficultyProgress(),
         },
       },
@@ -244,16 +264,18 @@ class ProgressStorage {
     return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
   }
 
-  private compactProgress(progress: GameProgress): CompactProgressPayloadV2 {
+  private compactProgress(progress: GameProgress): CompactProgressPayloadV3 {
     return {
       v: STORAGE_VERSION,
       u: progress.userId,
       b: {
         e: this.compactDifficultyProgress(progress.modes.bride.easy),
+        n: this.compactDifficultyProgress(progress.modes.bride.normal),
         h: this.compactDifficultyProgress(progress.modes.bride.hard),
       },
       d: {
         e: this.compactDifficultyProgress(progress.modes.dragon.easy),
+        n: this.compactDifficultyProgress(progress.modes.dragon.normal),
         h: this.compactDifficultyProgress(progress.modes.dragon.hard),
       },
       a: [...progress.unlockedAchievementIds],
@@ -276,16 +298,18 @@ class ProgressStorage {
       userId: payload.u,
       modes: {
         bride: {
-          easy: this.expandDifficultyProgress(payload.b.e),
+          easy: payload.v === STORAGE_VERSION ? this.expandDifficultyProgress(payload.b.e) : this.createEmptyDifficultyProgress(),
+          normal: this.expandDifficultyProgress(payload.v === STORAGE_VERSION ? payload.b.n : payload.b.e),
           hard: this.expandDifficultyProgress(payload.b.h),
         },
         dragon: {
-          easy: this.expandDifficultyProgress(payload.d.e),
+          easy: payload.v === STORAGE_VERSION ? this.expandDifficultyProgress(payload.d.e) : this.createEmptyDifficultyProgress(),
+          normal: this.expandDifficultyProgress(payload.v === STORAGE_VERSION ? payload.d.n : payload.d.e),
           hard: this.expandDifficultyProgress(payload.d.h),
         },
       },
-      unlockedAchievementIds: payload.v === STORAGE_VERSION ? payload.a.filter(isAchievementId) : [],
-      dragonModeUnlocked: payload.v === STORAGE_VERSION ? payload.g === 1 : false,
+      unlockedAchievementIds: payload.v !== LEGACY_STORAGE_VERSION ? payload.a.filter(isAchievementId) : [],
+      dragonModeUnlocked: payload.v !== LEGACY_STORAGE_VERSION ? payload.g === 1 : false,
     }
     this.backfillStageClearAchievements(progress)
     return progress
@@ -303,15 +327,15 @@ class ProgressStorage {
     if (!this.isRecord(value) || !this.isRecord(value.p) || typeof value.s !== 'string') return false
     const payload = value.p
     if (
-      (payload.v !== STORAGE_VERSION && payload.v !== LEGACY_STORAGE_VERSION) ||
+      (payload.v !== STORAGE_VERSION && payload.v !== PREVIOUS_STORAGE_VERSION && payload.v !== LEGACY_STORAGE_VERSION) ||
       typeof payload.u !== 'string' ||
       !this.isUuid4(payload.u)
     ) {
       return false
     }
     if (!this.isRecord(payload.b) || !this.isRecord(payload.d)) return false
-    if (!this.isValidModePayload(payload.b) || !this.isValidModePayload(payload.d)) return false
-    if (payload.v === STORAGE_VERSION) {
+    if (!this.isValidModePayload(payload.b, payload.v) || !this.isValidModePayload(payload.d, payload.v)) return false
+    if (payload.v !== LEGACY_STORAGE_VERSION) {
       if (!Array.isArray(payload.a) || !payload.a.every((id) => typeof id === 'string' && isAchievementId(id))) {
         return false
       }
@@ -322,22 +346,35 @@ class ProgressStorage {
         ? {
             v: STORAGE_VERSION,
             u: payload.u,
-            b: payload.b,
-            d: payload.d,
+            b: payload.b as CompactProgressPayloadV3['b'],
+            d: payload.d as CompactProgressPayloadV3['d'],
+            a: payload.a as AchievementId[],
+            g: payload.g as 0 | 1,
+          }
+        : payload.v === PREVIOUS_STORAGE_VERSION
+          ? {
+            v: PREVIOUS_STORAGE_VERSION,
+            u: payload.u,
+            b: payload.b as CompactProgressPayloadV2['b'],
+            d: payload.d as CompactProgressPayloadV2['d'],
             a: payload.a as AchievementId[],
             g: payload.g as 0 | 1,
           }
         : {
             v: LEGACY_STORAGE_VERSION,
             u: payload.u,
-            b: payload.b,
-            d: payload.d,
+            b: payload.b as CompactProgressPayloadV1['b'],
+            d: payload.d as CompactProgressPayloadV1['d'],
           }
     return value.s === this.createSignature(compactPayload)
   }
 
-  private isValidModePayload(value: Record<string, unknown>): value is CompactProgressPayload['b'] {
-    return this.isValidDifficultyPayload(value.e) && this.isValidDifficultyPayload(value.h)
+  private isValidModePayload(value: Record<string, unknown>, version: CompactProgressPayload['v']): value is CompactProgressPayload['b'] {
+    return (
+      this.isValidDifficultyPayload(value.e) &&
+      (version === STORAGE_VERSION ? this.isValidDifficultyPayload(value.n) : true) &&
+      this.isValidDifficultyPayload(value.h)
+    )
   }
 
   private isValidDifficultyPayload(value: unknown): value is CompactDifficultyProgress {
@@ -397,7 +434,7 @@ class ProgressStorage {
 
   private backfillStageClearAchievements(progress: GameProgress) {
     ;(['bride', 'dragon'] as const).forEach((character) => {
-      ;(['easy', 'hard'] as const).forEach((difficulty) => {
+      ;(['normal', 'hard'] as const).forEach((difficulty) => {
         progress.modes[character][difficulty].stageClears.forEach((clears, stageIndex) => {
           if (clears <= 0) return
           this.addUnlockedAchievements(progress, getStageClearAchievementIds(character, difficulty, stageIndex))
@@ -415,10 +452,12 @@ class ProgressStorage {
       modes: {
         bride: {
           easy: this.cloneDifficultyProgress(progress.modes.bride.easy),
+          normal: this.cloneDifficultyProgress(progress.modes.bride.normal),
           hard: this.cloneDifficultyProgress(progress.modes.bride.hard),
         },
         dragon: {
           easy: this.cloneDifficultyProgress(progress.modes.dragon.easy),
+          normal: this.cloneDifficultyProgress(progress.modes.dragon.normal),
           hard: this.cloneDifficultyProgress(progress.modes.dragon.hard),
         },
       },

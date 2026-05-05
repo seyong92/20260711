@@ -28,7 +28,7 @@ class RunState {
     this.snapshot = {
       hp: difficulty.startHp,
       maxHp: difficulty.startMaxHp,
-      powerLevel: 0,
+      powerLevel: difficulty.startPowerLevel,
       cameraBeamHits: [0, 0, 0],
       bossHitsTaken: [0, 0, 0],
       defenseFailures: [0, 0, 0],

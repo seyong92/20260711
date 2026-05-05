@@ -259,9 +259,9 @@ function generateSpawns(stageId: number, difficultyId: DifficultyId = getSelecte
 }
 
 function getShotCountOverride(stageId: number, difficultyId: DifficultyId, spawn: WaveSpawn) {
-  if (difficultyId === 'easy' && stageId === 2 && spawn.enemyType === 'thesis-paper') return 1
-  if (difficultyId === 'easy' && stageId === 1) return 0
-  if (difficultyId === 'easy' && stageId === 3 && spawn.enemyType === 'invitation') return 1
+  if (difficultyId !== 'hard' && stageId === 2 && spawn.enemyType === 'thesis-paper') return 1
+  if (difficultyId !== 'hard' && stageId === 1) return 0
+  if (difficultyId !== 'hard' && stageId === 3 && spawn.enemyType === 'invitation') return 1
   return spawn.shotCountOverride
 }
 
@@ -274,7 +274,7 @@ export const STAGES: StageConfig[] = [
     scrollSpeed: 60,
     duration: 30000,
     bossType: 'train',
-    spawns: generateSpawns(1, 'easy'),
+    spawns: generateSpawns(1, 'normal'),
   },
   {
     id: 2,
@@ -285,7 +285,7 @@ export const STAGES: StageConfig[] = [
     scrollSpeed: 70,
     duration: 30000,
     bossType: 'thesis',
-    spawns: generateSpawns(2, 'easy'),
+    spawns: generateSpawns(2, 'normal'),
   },
   {
     id: 3,
@@ -295,7 +295,7 @@ export const STAGES: StageConfig[] = [
     scrollSpeed: 80,
     duration: 30000,
     bossType: 'piano',
-    spawns: generateSpawns(3, 'easy'),
+    spawns: generateSpawns(3, 'normal'),
   },
 ]
 

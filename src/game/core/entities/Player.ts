@@ -188,8 +188,6 @@ export interface DamageResult {
 
 export type HeartCollectResult = 'hp-up' | 'score';
 
-export const MOBILE_RANGED_AUTOFIRE_ENABLED = false;
-
 export interface MeleeStrike {
   bounds: Phaser.Geom.Rectangle;
   damage: number;
@@ -280,9 +278,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   enableAutoFire() {
-    if (this.profile.attackType === 'ranged') {
-      this.autoFire = true;
-    }
+    this.autoFire = true;
   }
 
   disableAutoFire() {
@@ -294,7 +290,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   canAutoFire() {
-    return this.profile.attackType === 'ranged';
+    return true;
   }
 
   consumeMeleeStrikes() {

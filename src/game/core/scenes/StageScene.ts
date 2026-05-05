@@ -5,17 +5,16 @@ import { getStageConfig } from '../../content/stages'
 import { Enemy } from '../entities/Enemy'
 import { Item } from '../entities/Item'
 import { GAME_HEIGHT, GAME_WIDTH, GROUND_Y } from '../constants'
-import { MOBILE_RANGED_AUTOFIRE_ENABLED, Player } from '../entities/Player'
+import { Player } from '../entities/Player'
 import { Bullet, BulletPool } from '../systems/BulletPool'
 import { EnemySpawner } from '../systems/EnemySpawner'
 import { HitboxDebugOverlay } from '../systems/HitboxDebugOverlay'
-import { getSelectedDifficultyId } from '../../content/difficulty'
+import { getDifficultyConfig, getSelectedDifficultyId } from '../../content/difficulty'
 import { getSelectedPlayerCharacter } from '../systems/PlayerSelection'
 import { progressStorage } from '../systems/ProgressStorage'
 import { runState } from '../systems/RunState'
 import { CURRENT_STAGE_RESTART_SCORE_PENALTY, scoreManager } from '../systems/ScoreManager'
 import { ScrollManager } from '../systems/ScrollManager'
-import { AutofireToggle } from '../ui/AutofireToggle'
 import { HUD } from '../ui/HUD'
 import { PauseMenu } from '../ui/PauseMenu'
 import { TouchControls } from '../ui/TouchControls'
@@ -48,7 +47,6 @@ export class StageScene extends Phaser.Scene {
   private hud!: HUD
   private pauseMenu!: PauseMenu
   private controls!: TouchControls
-  private autofireToggle: AutofireToggle | null = null
   private droppedPowerups!: Phaser.Physics.Arcade.Group
   private stageIndex = 0
   private stageStartTime = 0
@@ -71,11 +69,7 @@ export class StageScene extends Phaser.Scene {
     this.bulletPool = new BulletPool(this, 150)
     this.player = new Player(this, 80, GROUND_Y - 48, getSelectedPlayerCharacter())
     this.player.setBulletPool(this.bulletPool)
-    if (
-      MOBILE_RANGED_AUTOFIRE_ENABLED &&
-      !this.sys.game.device.os.desktop &&
-      this.player.canAutoFire()
-    ) {
+    if (getDifficultyConfig().defaultAutofire) {
       this.player.enableAutoFire()
     }
 
@@ -86,15 +80,6 @@ export class StageScene extends Phaser.Scene {
     this.hud.setTextTheme(stage.textTheme)
     this.hud.setStage(`STAGE ${stage.id}: ${stage.name}`)
     this.controls = new TouchControls(this)
-    this.autofireToggle = this.player.canAutoFire()
-      ? new AutofireToggle(this, {
-          getEnabled: () => this.player.isAutoFireEnabled(),
-          setEnabled: (enabled) => {
-            if (enabled) this.player.enableAutoFire()
-            else this.player.disableAutoFire()
-          },
-        })
-      : null
     this.pauseMenu = new PauseMenu(this, {
       onResume: () => this.resumeFromPauseMenu(),
       onRestart: () => this.restartFromPauseMenu(),
@@ -509,8 +494,6 @@ export class StageScene extends Phaser.Scene {
   private cleanup() {
     this.input.keyboard?.off('keydown', this.onKeyDown, this)
     this.pauseMenu.destroy()
-    this.autofireToggle?.destroy()
-    this.autofireToggle = null
     this.controls.destroy()
     this.hud.destroy()
     this.debugOverlay.destroy()

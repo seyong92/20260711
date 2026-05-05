@@ -1,4 +1,4 @@
-export type DifficultyId = 'easy' | 'hard';
+export type DifficultyId = 'easy' | 'normal' | 'hard';
 
 export interface DifficultyConfig {
   id: DifficultyId;
@@ -14,6 +14,8 @@ export interface DifficultyConfig {
   cameraShotCount: number;
   pianoBouquetBurstCount: number;
   scoreMultiplier: number;
+  startPowerLevel: number;
+  defaultAutofire: boolean;
 }
 
 const EASY_BOSS_ITEM_SEQUENCE = [
@@ -30,6 +32,23 @@ export const DIFFICULTY_CONFIGS: Record<DifficultyId, DifficultyConfig> = {
   easy: {
     id: 'easy',
     label: 'EASY',
+    description: 'HP 5 / 파워 3단계 시작 / 자동공격 / 점수 0.5배',
+    startHp: 10,
+    startMaxHp: 10,
+    hitDamage: 1,
+    dropPowerupsOnHit: false,
+    bossHpMultiplier: 1,
+    bossCooldownMultiplier: 1.35,
+    bossItemSequence: [...EASY_BOSS_ITEM_SEQUENCE, 'heart', 'star'],
+    cameraShotCount: 1,
+    pianoBouquetBurstCount: 1,
+    scoreMultiplier: 0.5,
+    startPowerLevel: 2,
+    defaultAutofire: true,
+  },
+  normal: {
+    id: 'normal',
+    label: 'NORMAL',
     description: 'HP 5 / 반칸 피해 / 파워업 드랍 없음',
     startHp: 10,
     startMaxHp: 10,
@@ -41,6 +60,8 @@ export const DIFFICULTY_CONFIGS: Record<DifficultyId, DifficultyConfig> = {
     cameraShotCount: 1,
     pianoBouquetBurstCount: 1,
     scoreMultiplier: 1,
+    startPowerLevel: 0,
+    defaultAutofire: false,
   },
   hard: {
     id: 'hard',
@@ -56,10 +77,12 @@ export const DIFFICULTY_CONFIGS: Record<DifficultyId, DifficultyConfig> = {
     cameraShotCount: 1,
     pianoBouquetBurstCount: 2,
     scoreMultiplier: 1.5,
+    startPowerLevel: 0,
+    defaultAutofire: false,
   },
 };
 
-let selectedDifficultyId: DifficultyId = 'easy';
+let selectedDifficultyId: DifficultyId = 'normal';
 const difficultyGlobalState = globalThis as typeof globalThis & {
   __weddingDifficultyId?: DifficultyId;
 };

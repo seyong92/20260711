@@ -8,6 +8,9 @@ export interface RunSnapshot {
   hp: number
   maxHp: number
   powerLevel: number
+  cameraBeamHits: [number, number, number]
+  bossHitsTaken: [number, number, number]
+  defenseFailures: [number, number, number]
 }
 
 class RunState {
@@ -15,6 +18,9 @@ class RunState {
     hp: BASE_MAX_HP,
     maxHp: BASE_MAX_HP,
     powerLevel: 0,
+    cameraBeamHits: [0, 0, 0],
+    bossHitsTaken: [0, 0, 0],
+    defenseFailures: [0, 0, 0],
   }
 
   reset() {
@@ -23,11 +29,19 @@ class RunState {
       hp: difficulty.startHp,
       maxHp: difficulty.startMaxHp,
       powerLevel: 0,
+      cameraBeamHits: [0, 0, 0],
+      bossHitsTaken: [0, 0, 0],
+      defenseFailures: [0, 0, 0],
     }
   }
 
   getSnapshot(): RunSnapshot {
-    return { ...this.snapshot }
+    return {
+      ...this.snapshot,
+      cameraBeamHits: [...this.snapshot.cameraBeamHits],
+      bossHitsTaken: [...this.snapshot.bossHitsTaken],
+      defenseFailures: [...this.snapshot.defenseFailures],
+    }
   }
 
   setHp(hp: number) {
@@ -45,6 +59,35 @@ class RunState {
 
   setPowerLevel(powerLevel: number) {
     this.snapshot.powerLevel = Math.max(0, Math.min(powerLevel, POWERUP_MAX_LEVEL))
+  }
+
+  markCameraBeamHit(stageIndex: number) {
+    this.incrementStageCounter(this.snapshot.cameraBeamHits, stageIndex)
+  }
+
+  markBossHit(stageIndex: number) {
+    this.incrementStageCounter(this.snapshot.bossHitsTaken, stageIndex)
+  }
+
+  markDefenseFailure(stageIndex: number) {
+    this.incrementStageCounter(this.snapshot.defenseFailures, stageIndex)
+  }
+
+  hasCameraBeamHit(stageIndex: number) {
+    return this.snapshot.cameraBeamHits[stageIndex] > 0
+  }
+
+  hasBossHit(stageIndex: number) {
+    return this.snapshot.bossHitsTaken[stageIndex] > 0
+  }
+
+  hasDefenseFailure(stageIndex: number) {
+    return this.snapshot.defenseFailures[stageIndex] > 0
+  }
+
+  private incrementStageCounter(counters: [number, number, number], stageIndex: number) {
+    if (!Number.isInteger(stageIndex) || stageIndex < 0 || stageIndex >= counters.length) return
+    counters[stageIndex] += 1
   }
 }
 

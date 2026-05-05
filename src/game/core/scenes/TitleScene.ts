@@ -5,6 +5,7 @@ import {
   setSelectedDifficulty,
   type DifficultyId,
 } from '../../content/difficulty'
+import { ACHIEVEMENTS } from '../../content/achievements'
 import { getGameModeContent } from '../../content/gameContent'
 import { STAGES } from '../../content/stages'
 import type { GameModeId, StorySequenceId } from '../../../types/site'
@@ -60,6 +61,7 @@ const MODE_TRANSITION_STRIPE_DURATION = 120
 const MODE_TRANSITION_STRIPE_STAGGER = 13
 const DIFFICULTY_OPTIONS: DifficultyId[] = ['easy', 'hard']
 const TITLE_ACTION_X = GAME_WIDTH - 118
+const TITLE_MENU_OPTIONS = ['게임 시작', '도전 과제'] as const
 
 type TitleModeStyle = {
   backgroundKey: string
@@ -134,7 +136,9 @@ export class TitleScene extends Phaser.Scene {
     }
     let modeContent = getGameModeContent('bride')
     let modeStyle = TITLE_MODE_STYLES.bride
+    let mainMenuSelectedIndex = 0
     let difficultyPanel: Phaser.GameObjects.Container | null = null
+    let achievementsPanel: Phaser.GameObjects.Container | null = null
     let difficultyPanelSelectedIndex = getSelectedDifficultyId() === 'hard' ? 1 : 0
     let stageSelectPanel: Phaser.GameObjects.Container | null = null
     let stageSelectStageIndex = 0
@@ -192,7 +196,7 @@ export class TitleScene extends Phaser.Scene {
       .setDepth(14)
 
     const startText = this.add
-      .text(TITLE_ACTION_X, 548, modeContent.startLabel, {
+      .text(TITLE_ACTION_X, 520, '', {
         fontFamily: '"Apple SD Gothic Neo", "Noto Sans KR", sans-serif',
         fontSize: '20px',
         color: modeStyle.accentColor,
@@ -204,8 +208,21 @@ export class TitleScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true })
       .setDepth(14)
 
+    const achievementsText = this.add
+      .text(TITLE_ACTION_X, 566, '', {
+        fontFamily: '"Apple SD Gothic Neo", "Noto Sans KR", sans-serif',
+        fontSize: '18px',
+        color: '#e0e0e0',
+        fontStyle: 'bold',
+        stroke: '#0c1020',
+        strokeThickness: 5,
+      })
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(14)
+
     const startPulseTween = this.tweens.add({
-      targets: startText,
+      targets: [startText, achievementsText],
       alpha: { from: 1, to: 0.55 },
       scale: { from: 1, to: 1.035 },
       duration: 700,
@@ -219,6 +236,7 @@ export class TitleScene extends Phaser.Scene {
         titleLogo,
         subtitleText,
         startText,
+        achievementsText,
         titleSparkles,
         mobileStartText,
       ].filter(Boolean) as FadableGameObject[])
@@ -266,6 +284,17 @@ export class TitleScene extends Phaser.Scene {
     }
     drawModeDecorations()
 
+    const updateMainMenu = () => {
+      ;[startText, achievementsText].forEach((text, index) => {
+        const selected = index === mainMenuSelectedIndex
+        text.setText(`${selected ? '▶ ' : '  '}${TITLE_MENU_OPTIONS[index]}`)
+        text.setColor(selected ? modeStyle.accentColor : '#e0e0e0')
+        text.setAlpha(selected ? 1 : 0.74)
+        text.setScale(selected ? 1.04 : 1)
+      })
+    }
+    updateMainMenu()
+
     this.events.on('update', () => {
       titleBg.setPosition(GAME_WIDTH / 2, GAME_HEIGHT / 2)
       titleLogo.setPosition(GAME_WIDTH / 2, modeStyle.logoY)
@@ -287,9 +316,8 @@ export class TitleScene extends Phaser.Scene {
       subtitleText.setText(modeContent.subtitle)
       subtitleText.setY(modeStyle.subtitleY)
       subtitleText.setColor(modeStyle.subtitleColor)
-      startText.setText(modeContent.startLabel)
-      startText.setColor(modeStyle.accentColor)
-      mobileStartText?.setText(modeContent.startLabel)
+      updateMainMenu()
+      mobileStartText?.setText(TITLE_MENU_OPTIONS[0])
     }
 
     const switchTitleMode = (nextMode: GameModeId) => {
@@ -308,6 +336,9 @@ export class TitleScene extends Phaser.Scene {
       runStripeWipe('cover', () => {
         this.dragonSelected = nextMode === 'dragon'
         setSelectedPlayerCharacter(nextMode)
+        if (nextMode === 'dragon') {
+          progressStorage.recordDragonModeUnlocked()
+        }
         applyModeContent()
         getContentObjects().forEach((object) => object.setAlpha(0))
 
@@ -342,6 +373,15 @@ export class TitleScene extends Phaser.Scene {
       difficultyPanel?.destroy(true)
       difficultyPanel = null
       startText.setVisible(true)
+      achievementsText.setVisible(true)
+      mobileStartText?.setVisible(true)
+    }
+
+    const closeAchievementsPanel = () => {
+      achievementsPanel?.destroy(true)
+      achievementsPanel = null
+      startText.setVisible(true)
+      achievementsText.setVisible(true)
       mobileStartText?.setVisible(true)
     }
 
@@ -425,6 +465,7 @@ export class TitleScene extends Phaser.Scene {
     const showDifficultyPanel = (preserveSelection = false) => {
       if (this.started || this.modeTransitioning) return
       const shouldResetSelection = !difficultyPanel && !preserveSelection
+      closeAchievementsPanel()
       closeStageSelectPanel()
       closeCutsceneSelectPanel()
       closeDifficultyPanel()
@@ -432,6 +473,7 @@ export class TitleScene extends Phaser.Scene {
         difficultyPanelSelectedIndex = getSelectedDifficultyId() === 'hard' ? 1 : 0
       }
       startText.setVisible(false)
+      achievementsText.setVisible(false)
       mobileStartText?.setVisible(false)
       const container = this.add.container(0, 0).setDepth(120)
       difficultyPanel = container
@@ -475,6 +517,91 @@ export class TitleScene extends Phaser.Scene {
       updateSelection()
     }
 
+    const showAchievementsPanel = () => {
+      if (this.started || this.modeTransitioning) return
+      closeDifficultyPanel()
+      closeStageSelectPanel()
+      closeCutsceneSelectPanel()
+      closeAchievementsPanel()
+      startText.setVisible(false)
+      achievementsText.setVisible(false)
+      mobileStartText?.setVisible(false)
+
+      const snapshot = progressStorage.getSnapshot()
+      const unlocked = new Set(snapshot.unlockedAchievementIds)
+      const unlockedCount = ACHIEVEMENTS.filter((achievement) => unlocked.has(achievement.id)).length
+      const { container, panelY } = createPanelShell(`도전 과제 ${unlockedCount}/${ACHIEVEMENTS.length}`, 604)
+      achievementsPanel = container
+
+      ACHIEVEMENTS.forEach((achievement, index) => {
+        const y = panelY + 88 + index * 31
+        const hidden = achievement.hiddenUntilDragonUnlocked && !snapshot.dragonModeUnlocked
+        const achieved = unlocked.has(achievement.id)
+        const rowBack = this.add
+          .rectangle(GAME_WIDTH / 2, y, GAME_WIDTH - 104, 27, achieved ? 0x1d3246 : 0x172033, achieved ? 0.96 : 0.72)
+          .setStrokeStyle(1, achievement.hardFrame ? 0xffd76d : 0xffffff, achieved ? 0.5 : 0.14)
+        container.add(rowBack)
+
+        if (hidden) {
+          const hiddenIcon = this.add
+            .text(79, y, '???', {
+              fontFamily: 'monospace',
+              fontSize: '10px',
+              color: '#8f9aaa',
+              fontStyle: 'bold',
+            })
+            .setOrigin(0.5)
+          container.add(hiddenIcon)
+        } else {
+          const icon = this.add
+            .image(79, y, `achievement-${achievement.iconKey}`)
+            .setDisplaySize(21, 21)
+            .setAlpha(achieved ? 1 : 0.42)
+          container.add(icon)
+          if (achievement.hardFrame) {
+            const frame = this.add.graphics()
+            frame.lineStyle(2, 0xffd76d, achieved ? 0.95 : 0.42)
+            frame.strokeRoundedRect(66, y - 13, 26, 26, 3)
+            container.add(frame)
+          }
+        }
+
+        const title = this.add
+          .text(98, y - 9, hidden ? '???' : achievement.name, {
+            fontFamily: '"Apple SD Gothic Neo", "Noto Sans KR", sans-serif',
+            fontSize: '11px',
+            color: achieved ? modeStyle.accentColor : hidden ? '#8f9aaa' : '#e0e0e0',
+            fontStyle: 'bold',
+          })
+          .setOrigin(0, 0)
+        const description = this.add
+          .text(98, y + 5, hidden ? '???' : achievement.description, {
+            fontFamily: '"Apple SD Gothic Neo", "Noto Sans KR", sans-serif',
+            fontSize: '7px',
+            color: achieved ? '#cfd8ef' : '#9aa5b8',
+          })
+          .setOrigin(0, 0)
+        const status = this.add
+          .text(GAME_WIDTH - 76, y, achieved ? 'CLEAR' : '--', {
+            fontFamily: 'monospace',
+            fontSize: '9px',
+            color: achieved ? '#ffd76d' : '#6f7b8f',
+            fontStyle: 'bold',
+          })
+          .setOrigin(0.5)
+        container.add([title, description, status])
+      })
+
+      const closeHint = this.add
+        .text(GAME_WIDTH / 2, panelY + 574, 'ESC / Z / X / ENTER: 닫기', {
+          fontFamily: 'monospace',
+          fontSize: '10px',
+          color: '#9aa5b8',
+        })
+        .setOrigin(0.5)
+      container.add(closeHint)
+    }
+
     const showStageSelectPanel = (stageIndex: number, replaceOpenPanel = false) => {
       if (this.started || this.modeTransitioning) return
       if (stageSelectPanel && stageSelectStageIndex === stageIndex && !replaceOpenPanel) {
@@ -482,6 +609,7 @@ export class TitleScene extends Phaser.Scene {
         return
       }
       const shouldResetSelection = !stageSelectPanel || !replaceOpenPanel
+      closeAchievementsPanel()
       closeDifficultyPanel()
       closeCutsceneSelectPanel()
       closeStageSelectPanel()
@@ -564,6 +692,7 @@ export class TitleScene extends Phaser.Scene {
     const showCutsceneSelectPanel = (replaceOpenPanel = false) => {
       if (this.started || this.modeTransitioning) return
       const shouldResetSelection = !cutsceneSelectPanel || !replaceOpenPanel
+      closeAchievementsPanel()
       closeDifficultyPanel()
       closeStageSelectPanel()
       closeCutsceneSelectPanel()
@@ -673,6 +802,22 @@ export class TitleScene extends Phaser.Scene {
       }
       if (event.code === 'Enter' || event.code === 'Space' || event.code === 'KeyZ' || event.code === 'KeyX') {
         startIntroWithDifficulty(difficultyPanelSelectedIndex === 0 ? 'easy' : 'hard')
+        return true
+      }
+      return true
+    }
+
+    const handleAchievementsPanelKey = (event: KeyboardEvent) => {
+      if (!achievementsPanel) return false
+      if (event.repeat) return true
+      if (
+        event.code === 'Escape' ||
+        event.code === 'Enter' ||
+        event.code === 'Space' ||
+        event.code === 'KeyZ' ||
+        event.code === 'KeyX'
+      ) {
+        closeAchievementsPanel()
         return true
       }
       return true
@@ -799,12 +944,31 @@ export class TitleScene extends Phaser.Scene {
       }
     }
 
-    const start = () => {
-      showDifficultyPanel()
+    const activateMainMenu = () => {
+      if (mainMenuSelectedIndex === 0) showDifficultyPanel()
+      else showAchievementsPanel()
     }
 
-    startText.on('pointerdown', start)
+    startText.on('pointerover', () => {
+      mainMenuSelectedIndex = 0
+      updateMainMenu()
+    })
+    achievementsText.on('pointerover', () => {
+      mainMenuSelectedIndex = 1
+      updateMainMenu()
+    })
+    startText.on('pointerdown', () => {
+      mainMenuSelectedIndex = 0
+      updateMainMenu()
+      activateMainMenu()
+    })
+    achievementsText.on('pointerdown', () => {
+      mainMenuSelectedIndex = 1
+      updateMainMenu()
+      activateMainMenu()
+    })
     this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
+      if (handleAchievementsPanelKey(event)) return
       if (handleDifficultyPanelKey(event)) return
       if (handleStageSelectPanelKey(event)) return
       if (handleCutsceneSelectPanelKey(event)) return
@@ -817,14 +981,19 @@ export class TitleScene extends Phaser.Scene {
         recordCodeInput('right')
         return
       }
+      if (event.code === 'ArrowUp' || event.code === 'ArrowDown') {
+        mainMenuSelectedIndex = mainMenuSelectedIndex === 0 ? 1 : 0
+        updateMainMenu()
+        return
+      }
       if (event.code === 'Enter' || event.code === 'Space' || event.code === 'KeyZ' || event.code === 'KeyX') {
         if (event.repeat) return
-        start()
+        activateMainMenu()
       }
     })
 
     if (!this.sys.game.device.os.desktop) {
-      mobileStartText = this.createMobileTitleControls(recordCodeInput, start, modeContent.startLabel)
+      mobileStartText = this.createMobileTitleControls(recordCodeInput, activateMainMenu, showAchievementsPanel)
     }
 
     this.cameras.main.fadeIn(500, 0, 0, 0)
@@ -833,7 +1002,7 @@ export class TitleScene extends Phaser.Scene {
   private createMobileTitleControls(
     recordCodeInput: (input: HiddenCodeInput) => void,
     start: () => void,
-    startLabel: string,
+    showAchievements: () => void,
   ) {
     const y = GAME_HEIGHT - 54
     let startButtonText: Phaser.GameObjects.Text | null = null
@@ -859,7 +1028,8 @@ export class TitleScene extends Phaser.Scene {
 
     makeButton(52, 80, '◀', () => recordCodeInput('left'))
     makeButton(148, 80, '▶', () => recordCodeInput('right'))
-    startButtonText = makeButton(300, 152, startLabel, start)
+    startButtonText = makeButton(276, 96, TITLE_MENU_OPTIONS[0], start)
+    makeButton(374, 86, '도전', showAchievements)
     return startButtonText
   }
 }

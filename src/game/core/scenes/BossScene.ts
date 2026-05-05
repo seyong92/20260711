@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 
 import { BOSS_CONFIGS } from '../../content/bosses'
+import { ACHIEVEMENT_EVENT, type AchievementId } from '../../content/achievements'
 import { getDifficultyConfig, getSelectedDifficultyId } from '../../content/difficulty'
 import { getEnemyConfig } from '../../content/enemies'
 import { ITEM_CONFIGS } from '../../content/items'
@@ -127,7 +128,10 @@ export class BossScene extends Phaser.Scene {
         return new PianoBoss(this, this.bulletPool)
       case 'thesis':
       default:
-        return new ThesisBoss(this, this.bulletPool, this.player, () => this.handlePlayerHit())
+        return new ThesisBoss(this, this.bulletPool, this.player, () => {
+          runState.markDefenseFailure(this.stageIndex)
+          this.handlePlayerHit()
+        })
     }
   }
 
@@ -158,6 +162,7 @@ export class BossScene extends Phaser.Scene {
 
   private handlePlayerHit() {
     if (this.player.isInvincibleState()) return
+    runState.markBossHit(this.stageIndex)
     const result = this.player.takeDamage()
     this.spawnDroppedPowerups(result.droppedPowerups)
     this.cameras.main.shake(100, 0.01)
@@ -315,7 +320,13 @@ export class BossScene extends Phaser.Scene {
 
   private onBossDefeated() {
     scoreManager.addBossKill()
-    progressStorage.recordStageClear(getSelectedPlayerCharacter(), getSelectedDifficultyId(), this.stageIndex)
+    const unlockedAchievements = progressStorage.recordStageClear(
+      getSelectedPlayerCharacter(),
+      getSelectedDifficultyId(),
+      this.stageIndex,
+    )
+    unlockedAchievements.push(...this.unlockSpecialAchievements())
+    this.emitUnlockedAchievements(unlockedAchievements)
     this.add
       .particles(this.boss.x, this.boss.y, 'particle', {
         speed: { min: 50, max: 150 },
@@ -352,6 +363,26 @@ export class BossScene extends Phaser.Scene {
       clearText.destroy()
       this.goToNextStage()
     })
+  }
+
+  private unlockSpecialAchievements() {
+    const ids: AchievementId[] = []
+    if (this.stageIndex === 0 && !runState.hasBossHit(0)) {
+      ids.push('stage-1-train-no-hit')
+    }
+    if (this.stageIndex === 1 && !runState.hasDefenseFailure(1)) {
+      ids.push('stage-2-defense-no-hit')
+    }
+    if (this.stageIndex === 2 && !runState.hasCameraBeamHit(2)) {
+      ids.push('stage-3-camera-no-hit')
+    }
+    return progressStorage.unlockAchievements(ids)
+  }
+
+  private emitUnlockedAchievements(ids: AchievementId[]) {
+    if (ids.length > 0) {
+      this.game.events.emit(ACHIEVEMENT_EVENT, ids)
+    }
   }
 
   private goToNextStage() {

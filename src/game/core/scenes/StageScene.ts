@@ -403,6 +403,7 @@ export class StageScene extends Phaser.Scene {
       if (!bullet.active || !bullet.isBeamHazard || bullet.isPlayerBullet) continue
       if (shieldBounds && bullet.intersectsBeamBounds(shieldBounds)) continue
       if (bullet.intersectsBeamTarget(this.player)) {
+        runState.markCameraBeamHit(this.stageIndex)
         this.handlePlayerHit()
       }
     }

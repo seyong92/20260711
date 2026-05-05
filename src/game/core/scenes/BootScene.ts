@@ -1,6 +1,15 @@
 import Phaser from 'phaser'
 
 import gameOverBgUrl from '../../assets/backgrounds/game-over-bg.png'
+import achievementBouquetIconUrl from '../../assets/achievements/bouquet.png'
+import achievementCameraIconUrl from '../../assets/achievements/camera.png'
+import achievementCapIconUrl from '../../assets/achievements/cap.png'
+import achievementDoubleCapIconUrl from '../../assets/achievements/double-cap.png'
+import achievementHeartIconUrl from '../../assets/achievements/heart.png'
+import achievementReunionIconUrl from '../../assets/achievements/reunion.png'
+import achievementRingIconUrl from '../../assets/achievements/ring.png'
+import achievementThesisIconUrl from '../../assets/achievements/thesis.png'
+import achievementTicketIconUrl from '../../assets/achievements/ticket.png'
 import stage1BgUrl from '../../assets/backgrounds/stage1-long-distance-bg-v3.png'
 import stage2BgUrl from '../../assets/backgrounds/stage2-wedding-prep-bg-v2.png'
 import stage3DefenseClassroomBgUrl from '../../assets/backgrounds/stage3-defense-classroom-bg.png'
@@ -65,6 +74,15 @@ export class BootScene extends Phaser.Scene {
     this.load.image('stage3-bg', stage3BgUrl)
     this.load.image('stage3-boss-bg', stage3DefenseClassroomBgUrl)
     this.load.image('game-over-bg', gameOverBgUrl)
+    this.load.image('achievement-bouquet', achievementBouquetIconUrl)
+    this.load.image('achievement-camera', achievementCameraIconUrl)
+    this.load.image('achievement-cap', achievementCapIconUrl)
+    this.load.image('achievement-double-cap', achievementDoubleCapIconUrl)
+    this.load.image('achievement-heart', achievementHeartIconUrl)
+    this.load.image('achievement-reunion', achievementReunionIconUrl)
+    this.load.image('achievement-ring', achievementRingIconUrl)
+    this.load.image('achievement-thesis', achievementThesisIconUrl)
+    this.load.image('achievement-ticket', achievementTicketIconUrl)
     this.loadStoryImages()
     this.load.spritesheet('basic-bullet', basicBulletSpriteUrl, {
       frameWidth: BootScene.BASIC_BULLET_FRAME_SIZE,
@@ -146,6 +164,7 @@ export class BootScene extends Phaser.Scene {
     this.textures.get('dragon-player').setFilter(Phaser.Textures.FilterMode.LINEAR)
     this.generateCanvasAssets()
     this.createAnimations()
+    this.scene.launch('AchievementOverlayScene')
     this.scene.start('TitleScene')
   }
 

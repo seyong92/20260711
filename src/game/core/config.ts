@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 
+import { AchievementOverlayScene } from './scenes/AchievementOverlayScene'
 import { BossScene } from './scenes/BossScene'
 import { BootScene } from './scenes/BootScene'
 import { GameOverScene } from './scenes/GameOverScene'
@@ -37,6 +38,7 @@ export function createGameConfig(parent: HTMLElement): Phaser.Types.Core.GameCon
     },
     scene: [
       BootScene,
+      AchievementOverlayScene,
       TitleScene,
       StoryScene,
       StageScene,

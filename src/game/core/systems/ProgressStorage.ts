@@ -1,8 +1,15 @@
 import type { DifficultyId } from '../../content/difficulty'
+import {
+  ACHIEVEMENTS,
+  getStageClearAchievementIds,
+  isAchievementId,
+  type AchievementId,
+} from '../../content/achievements'
 import type { PlayerCharacterId } from './PlayerSelection'
 
 const STORAGE_KEY = '__ygp0'
-const STORAGE_VERSION = 1
+const STORAGE_VERSION = 2
+const LEGACY_STORAGE_VERSION = 1
 const STAGE_COUNT = 3
 const MAX_COUNTER = 999_999_999
 const SIGNATURE_SALT = 'yongsang-eunjin-progress-v1'
@@ -12,8 +19,8 @@ export const PROGRESS_TAMPER_EVENT = 'wedding-game-progress-reset'
 
 type CompactDifficultyProgress = [number, number, number, number, number]
 
-interface CompactProgressPayload {
-  v: number
+interface CompactProgressPayloadV1 {
+  v: typeof LEGACY_STORAGE_VERSION
   u: string
   b: {
     e: CompactDifficultyProgress
@@ -24,6 +31,23 @@ interface CompactProgressPayload {
     h: CompactDifficultyProgress
   }
 }
+
+interface CompactProgressPayloadV2 {
+  v: typeof STORAGE_VERSION
+  u: string
+  b: {
+    e: CompactDifficultyProgress
+    h: CompactDifficultyProgress
+  }
+  d: {
+    e: CompactDifficultyProgress
+    h: CompactDifficultyProgress
+  }
+  a: AchievementId[]
+  g: 0 | 1
+}
+
+type CompactProgressPayload = CompactProgressPayloadV1 | CompactProgressPayloadV2
 
 interface CompactProgressEnvelope {
   p: CompactProgressPayload
@@ -39,6 +63,8 @@ export interface DifficultyProgress {
 export type GameProgress = {
   userId: string
   modes: Record<PlayerCharacterId, Record<DifficultyId, DifficultyProgress>>
+  unlockedAchievementIds: AchievementId[]
+  dragonModeUnlocked: boolean
 }
 
 type LoadResult = {
@@ -76,11 +102,28 @@ class ProgressStorage {
   }
 
   recordStageClear(character: PlayerCharacterId, difficulty: DifficultyId, stageIndex: number) {
-    if (!Number.isInteger(stageIndex) || stageIndex < 0 || stageIndex >= STAGE_COUNT) return
-    this.updateProgress((progress) => {
+    if (!Number.isInteger(stageIndex) || stageIndex < 0 || stageIndex >= STAGE_COUNT) return []
+    const achievements = getStageClearAchievementIds(character, difficulty, stageIndex)
+    return this.updateProgress((progress) => {
       const slot = progress.modes[character][difficulty]
       slot.stageClears[stageIndex] = this.incrementCounter(slot.stageClears[stageIndex])
+      return this.addUnlockedAchievements(progress, achievements)
     })
+  }
+
+  unlockAchievements(ids: AchievementId[]) {
+    if (ids.length === 0) return []
+    return this.updateProgress((progress) => this.addUnlockedAchievements(progress, ids))
+  }
+
+  recordDragonModeUnlocked() {
+    this.updateProgress((progress) => {
+      progress.dragonModeUnlocked = true
+    })
+  }
+
+  isDragonModeUnlocked() {
+    return this.ensureProgress().dragonModeUnlocked
   }
 
   recordHighScore(character: PlayerCharacterId, difficulty: DifficultyId, score: number) {
@@ -91,10 +134,21 @@ class ProgressStorage {
     })
   }
 
-  private updateProgress(mutator: (progress: GameProgress) => void) {
+  private addUnlockedAchievements(progress: GameProgress, ids: AchievementId[]) {
+    const newlyUnlocked: AchievementId[] = []
+    ids.forEach((id) => {
+      if (progress.unlockedAchievementIds.includes(id)) return
+      progress.unlockedAchievementIds.push(id)
+      newlyUnlocked.push(id)
+    })
+    return newlyUnlocked
+  }
+
+  private updateProgress<T = void>(mutator: (progress: GameProgress) => T): T {
     const progress = this.ensureProgress()
-    mutator(progress)
+    const result = mutator(progress)
     this.save(progress)
+    return result
   }
 
   private ensureProgress(): GameProgress {
@@ -118,6 +172,9 @@ class ProgressStorage {
         throw new Error('Invalid progress envelope')
       }
       const progress = this.expandPayload(envelope.p)
+      if (envelope.p.v !== STORAGE_VERSION) {
+        this.save(progress)
+      }
       return { progress, tampered: false }
     } catch {
       const progress = this.createDefaultProgress()
@@ -164,6 +221,8 @@ class ProgressStorage {
           hard: this.createEmptyDifficultyProgress(),
         },
       },
+      unlockedAchievementIds: [],
+      dragonModeUnlocked: false,
     }
   }
 
@@ -185,7 +244,7 @@ class ProgressStorage {
     return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
   }
 
-  private compactProgress(progress: GameProgress): CompactProgressPayload {
+  private compactProgress(progress: GameProgress): CompactProgressPayloadV2 {
     return {
       v: STORAGE_VERSION,
       u: progress.userId,
@@ -197,6 +256,8 @@ class ProgressStorage {
         e: this.compactDifficultyProgress(progress.modes.dragon.easy),
         h: this.compactDifficultyProgress(progress.modes.dragon.hard),
       },
+      a: [...progress.unlockedAchievementIds],
+      g: progress.dragonModeUnlocked ? 1 : 0,
     }
   }
 
@@ -211,7 +272,7 @@ class ProgressStorage {
   }
 
   private expandPayload(payload: CompactProgressPayload): GameProgress {
-    return {
+    const progress: GameProgress = {
       userId: payload.u,
       modes: {
         bride: {
@@ -223,7 +284,11 @@ class ProgressStorage {
           hard: this.expandDifficultyProgress(payload.d.h),
         },
       },
+      unlockedAchievementIds: payload.v === STORAGE_VERSION ? payload.a.filter(isAchievementId) : [],
+      dragonModeUnlocked: payload.v === STORAGE_VERSION ? payload.g === 1 : false,
     }
+    this.backfillStageClearAchievements(progress)
+    return progress
   }
 
   private expandDifficultyProgress(progress: CompactDifficultyProgress): DifficultyProgress {
@@ -237,15 +302,37 @@ class ProgressStorage {
   private isValidEnvelope(value: unknown): value is CompactProgressEnvelope {
     if (!this.isRecord(value) || !this.isRecord(value.p) || typeof value.s !== 'string') return false
     const payload = value.p
-    if (payload.v !== STORAGE_VERSION || typeof payload.u !== 'string' || !this.isUuid4(payload.u)) return false
+    if (
+      (payload.v !== STORAGE_VERSION && payload.v !== LEGACY_STORAGE_VERSION) ||
+      typeof payload.u !== 'string' ||
+      !this.isUuid4(payload.u)
+    ) {
+      return false
+    }
     if (!this.isRecord(payload.b) || !this.isRecord(payload.d)) return false
     if (!this.isValidModePayload(payload.b) || !this.isValidModePayload(payload.d)) return false
-    const compactPayload: CompactProgressPayload = {
-      v: STORAGE_VERSION,
-      u: payload.u,
-      b: payload.b,
-      d: payload.d,
+    if (payload.v === STORAGE_VERSION) {
+      if (!Array.isArray(payload.a) || !payload.a.every((id) => typeof id === 'string' && isAchievementId(id))) {
+        return false
+      }
+      if (payload.g !== 0 && payload.g !== 1) return false
     }
+    const compactPayload: CompactProgressPayload =
+      payload.v === STORAGE_VERSION
+        ? {
+            v: STORAGE_VERSION,
+            u: payload.u,
+            b: payload.b,
+            d: payload.d,
+            a: payload.a as AchievementId[],
+            g: payload.g as 0 | 1,
+          }
+        : {
+            v: LEGACY_STORAGE_VERSION,
+            u: payload.u,
+            b: payload.b,
+            d: payload.d,
+          }
     return value.s === this.createSignature(compactPayload)
   }
 
@@ -308,6 +395,20 @@ class ProgressStorage {
     return Math.min(MAX_COUNTER, value + 1)
   }
 
+  private backfillStageClearAchievements(progress: GameProgress) {
+    ;(['bride', 'dragon'] as const).forEach((character) => {
+      ;(['easy', 'hard'] as const).forEach((difficulty) => {
+        progress.modes[character][difficulty].stageClears.forEach((clears, stageIndex) => {
+          if (clears <= 0) return
+          this.addUnlockedAchievements(progress, getStageClearAchievementIds(character, difficulty, stageIndex))
+        })
+      })
+    })
+    progress.unlockedAchievementIds = ACHIEVEMENTS
+      .map((achievement) => achievement.id)
+      .filter((id) => progress.unlockedAchievementIds.includes(id))
+  }
+
   private cloneProgress(progress: GameProgress): GameProgress {
     return {
       userId: progress.userId,
@@ -321,6 +422,8 @@ class ProgressStorage {
           hard: this.cloneDifficultyProgress(progress.modes.dragon.hard),
         },
       },
+      unlockedAchievementIds: [...progress.unlockedAchievementIds],
+      dragonModeUnlocked: progress.dragonModeUnlocked,
     }
   }
 

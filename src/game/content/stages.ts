@@ -92,7 +92,6 @@ const STAGE_WAVES: Array<Array<Array<WaveSpawn>>> = [
     [
       { enemyType: 'cap' },
       { enemyType: 'thesis-paper' },
-      { enemyType: 'cap' },
       { enemyType: 'book', dropItem: 'star' },
       { enemyType: 'cap' },
     ],
@@ -184,7 +183,6 @@ const HARD_STAGE_WAVES: Array<Array<Array<WaveSpawn>>> = [
     [
       { enemyType: 'cap' },
       { enemyType: 'thesis-paper' },
-      { enemyType: 'cap' },
       { enemyType: 'book', dropItem: 'star' },
       { enemyType: 'cap' },
       { enemyType: 'thesis-paper' },
@@ -261,6 +259,7 @@ function generateSpawns(stageId: number, difficultyId: DifficultyId = getSelecte
 }
 
 function getShotCountOverride(stageId: number, difficultyId: DifficultyId, spawn: WaveSpawn) {
+  if (difficultyId === 'easy' && stageId === 2 && spawn.enemyType === 'thesis-paper') return 1
   if (difficultyId === 'easy' && stageId === 1) return 0
   if (difficultyId === 'easy' && stageId === 3 && spawn.enemyType === 'invitation') return 1
   return spawn.shotCountOverride

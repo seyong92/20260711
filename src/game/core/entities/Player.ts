@@ -285,6 +285,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
   }
 
+  disableAutoFire() {
+    this.autoFire = false;
+  }
+
+  isAutoFireEnabled() {
+    return this.autoFire;
+  }
+
   canAutoFire() {
     return this.profile.attackType === 'ranged';
   }

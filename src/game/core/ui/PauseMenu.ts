@@ -2,11 +2,12 @@ import Phaser from 'phaser'
 
 import { GAME_HEIGHT, GAME_WIDTH } from '../constants'
 
-type PauseMenuAction = 'resume' | 'restart' | 'exit'
+type PauseMenuAction = 'resume' | 'restart' | 'restart-stage' | 'exit'
 
 interface PauseMenuCallbacks {
   onResume: () => void
   onRestart: () => void
+  onRestartStage?: () => void
   onExit: () => void
 }
 
@@ -15,21 +16,16 @@ interface PauseOption {
   label: string
 }
 
-const OPTIONS: PauseOption[] = [
-  { action: 'resume', label: '계속하기' },
-  { action: 'restart', label: '다시하기' },
-  { action: 'exit', label: '종료하기' },
-]
-
-const PANEL_W = 260
+const PANEL_W = 320
 const PANEL_H = 250
+const PANEL_H_EXTENDED = 292
 const PANEL_X = (GAME_WIDTH - PANEL_W) / 2
 const PANEL_Y = 190
-const OPTION_W = 188
+const PANEL_Y_EXTENDED = 168
+const OPTION_W = 254
 const OPTION_H = 38
 const OPTION_X = GAME_WIDTH / 2
-const OPTION_START_Y = PANEL_Y + 100
-const OPTION_GAP = 48
+const OPTION_GAP = 44
 
 export class PauseMenu {
   private scene: Phaser.Scene
@@ -55,6 +51,10 @@ export class PauseMenu {
     this.selectedIndex = 0
     this.optionTexts = []
     this.optionBacks = []
+    const options = this.getOptions()
+    const panelH = options.length > 3 ? PANEL_H_EXTENDED : PANEL_H
+    const panelY = options.length > 3 ? PANEL_Y_EXTENDED : PANEL_Y
+    const optionStartY = panelY + 100
 
     const container = this.scene.add.container(0, 0)
     container.setDepth(220)
@@ -68,15 +68,15 @@ export class PauseMenu {
 
     const panel = this.scene.add.graphics()
     panel.fillStyle(0x101827, 0.94)
-    panel.fillRoundedRect(PANEL_X, PANEL_Y, PANEL_W, PANEL_H, 8)
+    panel.fillRoundedRect(PANEL_X, panelY, PANEL_W, panelH, 8)
     panel.lineStyle(2, 0xffd700, 0.62)
-    panel.strokeRoundedRect(PANEL_X, PANEL_Y, PANEL_W, PANEL_H, 8)
+    panel.strokeRoundedRect(PANEL_X, panelY, PANEL_W, panelH, 8)
     panel.lineStyle(1, 0xffffff, 0.12)
-    panel.strokeRoundedRect(PANEL_X + 6, PANEL_Y + 6, PANEL_W - 12, PANEL_H - 12, 6)
+    panel.strokeRoundedRect(PANEL_X + 6, panelY + 6, PANEL_W - 12, panelH - 12, 6)
     container.add(panel)
 
     const title = this.scene.add
-      .text(GAME_WIDTH / 2, PANEL_Y + 38, 'MENU', {
+      .text(GAME_WIDTH / 2, panelY + 38, 'MENU', {
         fontFamily: 'monospace',
         fontSize: '22px',
         color: '#ffd700',
@@ -87,11 +87,11 @@ export class PauseMenu {
     container.add(title)
 
     const closeBack = this.scene.add
-      .rectangle(PANEL_X + PANEL_W - 28, PANEL_Y + 28, 28, 28, 0x1d293d, 0.92)
+      .rectangle(PANEL_X + PANEL_W - 28, panelY + 28, 28, 28, 0x1d293d, 0.92)
       .setStrokeStyle(1, 0xffffff, 0.28)
       .setInteractive({ useHandCursor: true })
     const closeText = this.scene.add
-      .text(PANEL_X + PANEL_W - 28, PANEL_Y + 27, 'X', {
+      .text(PANEL_X + PANEL_W - 28, panelY + 27, 'X', {
         fontFamily: 'monospace',
         fontSize: '16px',
         color: '#e0e0e0',
@@ -103,8 +103,8 @@ export class PauseMenu {
     closeText.on('pointerdown', this.callbacks.onResume)
     container.add([closeBack, closeText])
 
-    OPTIONS.forEach((option, index) => {
-      const y = OPTION_START_Y + index * OPTION_GAP
+    options.forEach((option, index) => {
+      const y = optionStartY + index * OPTION_GAP
       const back = this.scene.add
         .rectangle(OPTION_X, y, OPTION_W, OPTION_H, 0x172033, 0.88)
         .setStrokeStyle(1, 0xffffff, 0.2)
@@ -112,7 +112,7 @@ export class PauseMenu {
       const text = this.scene.add
         .text(OPTION_X, y, option.label, {
           fontFamily: 'monospace',
-          fontSize: '16px',
+          fontSize: option.label.length > 12 ? '13px' : '16px',
           color: '#e0e0e0',
           fontStyle: 'bold',
         })
@@ -167,13 +167,13 @@ export class PauseMenu {
     }
     if (event.code === 'ArrowUp') {
       event.preventDefault()
-      this.selectedIndex = Phaser.Math.Wrap(this.selectedIndex - 1, 0, OPTIONS.length)
+      this.selectedIndex = Phaser.Math.Wrap(this.selectedIndex - 1, 0, this.getOptions().length)
       this.updateSelection()
       return
     }
     if (event.code === 'ArrowDown') {
       event.preventDefault()
-      this.selectedIndex = Phaser.Math.Wrap(this.selectedIndex + 1, 0, OPTIONS.length)
+      this.selectedIndex = Phaser.Math.Wrap(this.selectedIndex + 1, 0, this.getOptions().length)
       this.updateSelection()
       return
     }
@@ -184,16 +184,18 @@ export class PauseMenu {
   }
 
   private activateSelected() {
-    const action = OPTIONS[this.selectedIndex]?.action
+    const action = this.getOptions()[this.selectedIndex]?.action
     if (action === 'resume') this.callbacks.onResume()
     else if (action === 'restart') this.callbacks.onRestart()
+    else if (action === 'restart-stage') this.callbacks.onRestartStage?.()
     else if (action === 'exit') this.callbacks.onExit()
   }
 
   private updateSelection() {
+    const options = this.getOptions()
     this.optionTexts.forEach((text, index) => {
       const selected = index === this.selectedIndex
-      text.setText(`${selected ? '> ' : '  '}${OPTIONS[index].label}`)
+      text.setText(`${selected ? '> ' : '  '}${options[index].label}`)
       text.setColor(selected ? '#ffd700' : '#e0e0e0')
       text.setAlpha(selected ? 1 : 0.72)
     })
@@ -202,5 +204,20 @@ export class PauseMenu {
       back.setFillStyle(selected ? 0x25344f : 0x172033, selected ? 0.96 : 0.88)
       back.setStrokeStyle(1, selected ? 0xffd700 : 0xffffff, selected ? 0.78 : 0.2)
     })
+  }
+
+  private getOptions(): PauseOption[] {
+    const restartOptions: PauseOption[] = this.callbacks.onRestartStage
+      ? [
+          { action: 'restart', label: '처음부터 다시 시작하기' },
+          { action: 'restart-stage', label: '해당 스테이지부터 다시 시작하기' },
+        ]
+      : [{ action: 'restart', label: '다시하기' }]
+
+    return [
+      { action: 'resume', label: '계속하기' },
+      ...restartOptions,
+      { action: 'exit', label: '종료하기' },
+    ]
   }
 }

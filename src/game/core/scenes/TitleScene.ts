@@ -139,6 +139,10 @@ export class TitleScene extends Phaser.Scene {
     let mainMenuSelectedIndex = 0
     let difficultyPanel: Phaser.GameObjects.Container | null = null
     let achievementsPanel: Phaser.GameObjects.Container | null = null
+    let achievementsContent: Phaser.GameObjects.Container | null = null
+    let achievementsScrollThumb: Phaser.GameObjects.Rectangle | null = null
+    let achievementsScrollY = 0
+    let achievementsMinScrollY = 0
     let difficultyPanelSelectedIndex = getSelectedDifficultyId() === 'hard' ? 1 : 0
     let stageSelectPanel: Phaser.GameObjects.Container | null = null
     let stageSelectStageIndex = 0
@@ -380,6 +384,10 @@ export class TitleScene extends Phaser.Scene {
     const closeAchievementsPanel = () => {
       achievementsPanel?.destroy(true)
       achievementsPanel = null
+      achievementsContent = null
+      achievementsScrollThumb = null
+      achievementsScrollY = 0
+      achievementsMinScrollY = 0
       startText.setVisible(true)
       achievementsText.setVisible(true)
       mobileStartText?.setVisible(true)
@@ -462,6 +470,20 @@ export class TitleScene extends Phaser.Scene {
       return { container, panelY }
     }
 
+    const applyAchievementsScroll = (deltaY: number) => {
+      if (!achievementsContent) return
+      achievementsScrollY = Phaser.Math.Clamp(achievementsScrollY + deltaY, achievementsMinScrollY, 0)
+      const contentBaseY = achievementsContent.getData('baseY') as number
+      achievementsContent.setY(contentBaseY + achievementsScrollY)
+      if (achievementsScrollThumb) {
+        const scrollRange = Math.abs(achievementsMinScrollY)
+        const trackTop = achievementsScrollThumb.getData('trackTop') as number
+        const trackRange = achievementsScrollThumb.getData('trackRange') as number
+        const progress = scrollRange > 0 ? Math.abs(achievementsScrollY) / scrollRange : 0
+        achievementsScrollThumb.setY(trackTop + trackRange * progress)
+      }
+    }
+
     const showDifficultyPanel = (preserveSelection = false) => {
       if (this.started || this.modeTransitioning) return
       const shouldResetSelection = !difficultyPanel && !preserveSelection
@@ -530,72 +552,174 @@ export class TitleScene extends Phaser.Scene {
       const snapshot = progressStorage.getSnapshot()
       const unlocked = new Set(snapshot.unlockedAchievementIds)
       const unlockedCount = ACHIEVEMENTS.filter((achievement) => unlocked.has(achievement.id)).length
-      const { container, panelY } = createPanelShell(`도전 과제 ${unlockedCount}/${ACHIEVEMENTS.length}`, 604)
+      const panelX = 32
+      const panelY = 34
+      const panelWidth = GAME_WIDTH - panelX * 2
+      const panelHeight = GAME_HEIGHT - panelY * 2
+      const rowX = panelX + 16
+      const rowWidth = panelWidth - 32
+      const listTop = panelY + 88
+      const listHeight = panelHeight - 150
+      const rowHeight = 50
+      const rowGap = 5
+      const rowStep = rowHeight + rowGap
+      const totalListHeight = ACHIEVEMENTS.length * rowStep - rowGap
+      const maxScrollable = Math.max(0, totalListHeight - listHeight)
+
+      const container = this.add.container(0, 0).setDepth(120)
       achievementsPanel = container
+      achievementsContent = this.add.container(0, listTop)
+      achievementsContent.setData('baseY', listTop)
+      achievementsScrollY = 0
+      achievementsMinScrollY = -maxScrollable
+
+      const overlay = this.add
+        .rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x050716, 0.66)
+        .setInteractive()
+      const panel = this.add.graphics()
+      panel.fillStyle(0x101827, 0.96)
+      panel.fillRoundedRect(panelX, panelY, panelWidth, panelHeight, 8)
+      panel.lineStyle(2, modeStyle.accentNumber, 0.86)
+      panel.strokeRoundedRect(panelX, panelY, panelWidth, panelHeight, 8)
+      const titleText = this.add
+        .text(GAME_WIDTH / 2, panelY + 43, `도전 과제 ${unlockedCount}/${ACHIEVEMENTS.length}`, {
+          fontFamily: 'monospace',
+          fontSize: '22px',
+          color: modeStyle.accentColor,
+          fontStyle: 'bold',
+        })
+        .setOrigin(0.5)
+        .setStroke('#050716', 4)
+      const closeBack = this.add
+        .rectangle(panelX + panelWidth - 25, panelY + 28, 34, 34, 0x25344f, 0.94)
+        .setStrokeStyle(1, modeStyle.accentNumber, 0.7)
+        .setInteractive({ useHandCursor: true })
+      const closeText = this.add
+        .text(closeBack.x, closeBack.y - 1, 'X', {
+          fontFamily: 'monospace',
+          fontSize: '20px',
+          color: '#ffffff',
+          fontStyle: 'bold',
+        })
+        .setOrigin(0.5)
+        .setInteractive({ useHandCursor: true })
+      closeBack.on('pointerdown', closeAchievementsPanel)
+      closeText.on('pointerdown', closeAchievementsPanel)
+      container.add([overlay, panel, titleText, closeBack, closeText, achievementsContent])
+
+      const maskShape = this.add.graphics()
+      maskShape.fillStyle(0xffffff, 1)
+      maskShape.fillRect(rowX, listTop, rowWidth, listHeight)
+      maskShape.setVisible(false)
+      achievementsContent.setMask(maskShape.createGeometryMask())
+      container.add(maskShape)
 
       ACHIEVEMENTS.forEach((achievement, index) => {
-        const y = panelY + 88 + index * 31
+        const y = index * rowStep + rowHeight / 2
         const hidden = achievement.hiddenUntilDragonUnlocked && !snapshot.dragonModeUnlocked
         const achieved = unlocked.has(achievement.id)
         const rowBack = this.add
-          .rectangle(GAME_WIDTH / 2, y, GAME_WIDTH - 104, 27, achieved ? 0x1d3246 : 0x172033, achieved ? 0.96 : 0.72)
+          .rectangle(rowX + rowWidth / 2, y, rowWidth, rowHeight, achieved ? 0x1d3246 : 0x172033, achieved ? 0.96 : 0.76)
           .setStrokeStyle(1, achievement.hardFrame ? 0xffd76d : 0xffffff, achieved ? 0.5 : 0.14)
-        container.add(rowBack)
+        achievementsContent?.add(rowBack)
 
         if (hidden) {
           const hiddenIcon = this.add
-            .text(79, y, '???', {
+            .text(rowX + 22, y, '???', {
               fontFamily: 'monospace',
-              fontSize: '10px',
+              fontSize: '12px',
               color: '#8f9aaa',
               fontStyle: 'bold',
             })
             .setOrigin(0.5)
-          container.add(hiddenIcon)
+          achievementsContent?.add(hiddenIcon)
         } else {
           const icon = this.add
-            .image(79, y, `achievement-${achievement.iconKey}`)
-            .setDisplaySize(21, 21)
+            .image(rowX + 22, y, `achievement-${achievement.iconKey}`)
+            .setDisplaySize(32, 32)
             .setAlpha(achieved ? 1 : 0.42)
-          container.add(icon)
+          achievementsContent?.add(icon)
           if (achievement.hardFrame) {
             const frame = this.add.graphics()
             frame.lineStyle(2, 0xffd76d, achieved ? 0.95 : 0.42)
-            frame.strokeRoundedRect(66, y - 13, 26, 26, 3)
-            container.add(frame)
+            frame.strokeRoundedRect(rowX + 4, y - 18, 36, 36, 4)
+            achievementsContent?.add(frame)
           }
         }
 
         const title = this.add
-          .text(98, y - 9, hidden ? '???' : achievement.name, {
+          .text(rowX + 48, y - 18, hidden ? '???' : achievement.name, {
             fontFamily: '"Apple SD Gothic Neo", "Noto Sans KR", sans-serif',
-            fontSize: '11px',
+            fontSize: '14px',
             color: achieved ? modeStyle.accentColor : hidden ? '#8f9aaa' : '#e0e0e0',
             fontStyle: 'bold',
           })
           .setOrigin(0, 0)
         const description = this.add
-          .text(98, y + 5, hidden ? '???' : achievement.description, {
+          .text(rowX + 48, y + 2, hidden ? '???' : achievement.description, {
             fontFamily: '"Apple SD Gothic Neo", "Noto Sans KR", sans-serif',
-            fontSize: '7px',
+            fontSize: '9px',
             color: achieved ? '#cfd8ef' : '#9aa5b8',
+            wordWrap: { width: rowWidth - 104 },
           })
           .setOrigin(0, 0)
         const status = this.add
-          .text(GAME_WIDTH - 76, y, achieved ? 'CLEAR' : '--', {
+          .text(rowX + rowWidth - 28, y, achieved ? 'CLEAR' : '--', {
             fontFamily: 'monospace',
-            fontSize: '9px',
+            fontSize: '10px',
             color: achieved ? '#ffd76d' : '#6f7b8f',
             fontStyle: 'bold',
           })
           .setOrigin(0.5)
-        container.add([title, description, status])
+        achievementsContent?.add([title, description, status])
       })
 
+      if (maxScrollable > 0) {
+        const trackX = panelX + panelWidth - 12
+        const trackTop = listTop + 4
+        const trackHeight = listHeight - 8
+        const thumbHeight = Math.max(42, trackHeight * (listHeight / totalListHeight))
+        const track = this.add
+          .rectangle(trackX, listTop + listHeight / 2, 4, trackHeight, 0xffffff, 0.12)
+          .setOrigin(0.5)
+        achievementsScrollThumb = this.add
+          .rectangle(trackX, trackTop + thumbHeight / 2, 6, thumbHeight, modeStyle.accentNumber, 0.78)
+          .setOrigin(0.5)
+        achievementsScrollThumb.setData('trackTop', trackTop + thumbHeight / 2)
+        achievementsScrollThumb.setData('trackRange', trackHeight - thumbHeight)
+        container.add([track, achievementsScrollThumb])
+      }
+
+      let dragging = false
+      let lastPointerY = 0
+      overlay.on('pointerup', () => {
+        dragging = false
+      })
+      const dragZone = this.add
+        .rectangle(rowX + rowWidth / 2, listTop + listHeight / 2, rowWidth, listHeight, 0x000000, 0)
+        .setInteractive()
+      dragZone.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+        dragging = true
+        lastPointerY = pointer.y
+      })
+      dragZone.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+        if (!dragging || !pointer.isDown) return
+        const deltaY = pointer.y - lastPointerY
+        lastPointerY = pointer.y
+        applyAchievementsScroll(deltaY)
+      })
+      dragZone.on('pointerup', () => {
+        dragging = false
+      })
+      dragZone.on('pointerout', () => {
+        dragging = false
+      })
+      container.add(dragZone)
+
       const closeHint = this.add
-        .text(GAME_WIDTH / 2, panelY + 574, 'ESC / Z / X / ENTER: 닫기', {
+        .text(GAME_WIDTH / 2, panelY + panelHeight - 28, '스크롤해서 보기 / X: 닫기', {
           fontFamily: 'monospace',
-          fontSize: '10px',
+          fontSize: '11px',
           color: '#9aa5b8',
         })
         .setOrigin(0.5)
@@ -810,6 +934,14 @@ export class TitleScene extends Phaser.Scene {
     const handleAchievementsPanelKey = (event: KeyboardEvent) => {
       if (!achievementsPanel) return false
       if (event.repeat) return true
+      if (event.code === 'ArrowUp') {
+        applyAchievementsScroll(42)
+        return true
+      }
+      if (event.code === 'ArrowDown') {
+        applyAchievementsScroll(-42)
+        return true
+      }
       if (
         event.code === 'Escape' ||
         event.code === 'Enter' ||
@@ -943,6 +1075,11 @@ export class TitleScene extends Phaser.Scene {
         return
       }
     }
+
+    this.input.on('wheel', (_pointer: Phaser.Input.Pointer, _objects: Phaser.GameObjects.GameObject[], _dx: number, dy: number) => {
+      if (!achievementsPanel) return
+      applyAchievementsScroll(-dy * 0.45)
+    })
 
     const activateMainMenu = () => {
       if (mainMenuSelectedIndex === 0) showDifficultyPanel()

@@ -13,8 +13,9 @@ import { getSelectedDifficultyId } from '../../content/difficulty'
 import { getSelectedPlayerCharacter } from '../systems/PlayerSelection'
 import { progressStorage } from '../systems/ProgressStorage'
 import { runState } from '../systems/RunState'
-import { scoreManager } from '../systems/ScoreManager'
+import { CURRENT_STAGE_RESTART_SCORE_PENALTY, scoreManager } from '../systems/ScoreManager'
 import { ScrollManager } from '../systems/ScrollManager'
+import { AutofireToggle } from '../ui/AutofireToggle'
 import { HUD } from '../ui/HUD'
 import { PauseMenu } from '../ui/PauseMenu'
 import { TouchControls } from '../ui/TouchControls'
@@ -47,6 +48,7 @@ export class StageScene extends Phaser.Scene {
   private hud!: HUD
   private pauseMenu!: PauseMenu
   private controls!: TouchControls
+  private autofireToggle: AutofireToggle | null = null
   private droppedPowerups!: Phaser.Physics.Arcade.Group
   private stageIndex = 0
   private stageStartTime = 0
@@ -84,9 +86,19 @@ export class StageScene extends Phaser.Scene {
     this.hud.setTextTheme(stage.textTheme)
     this.hud.setStage(`STAGE ${stage.id}: ${stage.name}`)
     this.controls = new TouchControls(this)
+    this.autofireToggle = this.player.canAutoFire()
+      ? new AutofireToggle(this, {
+          getEnabled: () => this.player.isAutoFireEnabled(),
+          setEnabled: (enabled) => {
+            if (enabled) this.player.enableAutoFire()
+            else this.player.disableAutoFire()
+          },
+        })
+      : null
     this.pauseMenu = new PauseMenu(this, {
       onResume: () => this.resumeFromPauseMenu(),
       onRestart: () => this.restartFromPauseMenu(),
+      onRestartStage: getSelectedDifficultyId() === 'easy' ? () => this.restartCurrentStageFromPauseMenu() : undefined,
       onExit: () => this.exitFromPauseMenu(),
     })
     this.debugOverlay = new HitboxDebugOverlay(this)
@@ -347,6 +359,15 @@ export class StageScene extends Phaser.Scene {
     this.scene.start('StageScene', { stageIndex: 0 })
   }
 
+  private restartCurrentStageFromPauseMenu() {
+    this.preparePauseMenuTransition()
+    progressStorage.recordAttempt(getSelectedPlayerCharacter(), getSelectedDifficultyId())
+    scoreManager.penalizePercent(CURRENT_STAGE_RESTART_SCORE_PENALTY)
+    runState.reset()
+    this.cleanup()
+    this.scene.start('StageScene', { stageIndex: this.stageIndex })
+  }
+
   private exitFromPauseMenu() {
     this.preparePauseMenuTransition()
     scoreManager.reset()
@@ -488,6 +509,8 @@ export class StageScene extends Phaser.Scene {
   private cleanup() {
     this.input.keyboard?.off('keydown', this.onKeyDown, this)
     this.pauseMenu.destroy()
+    this.autofireToggle?.destroy()
+    this.autofireToggle = null
     this.controls.destroy()
     this.hud.destroy()
     this.debugOverlay.destroy()

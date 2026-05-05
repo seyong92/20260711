@@ -1,5 +1,7 @@
 import { getDifficultyConfig } from '../../content/difficulty'
 
+export const CURRENT_STAGE_RESTART_SCORE_PENALTY = 0.2
+
 export class ScoreManager {
   private score = 0
   private startTime = 0
@@ -47,6 +49,11 @@ export class ScoreManager {
 
   penalizeDeath() {
     this.score = Math.max(0, this.score - 1000)
+  }
+
+  penalizePercent(percent: number) {
+    const normalized = Math.max(0, Math.min(percent, 1))
+    this.score = Math.max(0, Math.floor(this.score * (1 - normalized)))
   }
 }
 

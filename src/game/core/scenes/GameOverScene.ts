@@ -1,12 +1,12 @@
 import Phaser from 'phaser'
 
-import { getSelectedDifficultyId } from '../../content/difficulty'
+import { getSelectedDifficultyId, type DifficultyId } from '../../content/difficulty'
 import { getGameModeContent } from '../../content/gameContent'
 import { GAME_HEIGHT, GAME_WIDTH } from '../constants'
 import { getSelectedPlayerCharacter } from '../systems/PlayerSelection'
 import { progressStorage } from '../systems/ProgressStorage'
 import { runState } from '../systems/RunState'
-import { scoreManager } from '../systems/ScoreManager'
+import { CURRENT_STAGE_RESTART_SCORE_PENALTY, scoreManager } from '../systems/ScoreManager'
 
 const MIN_GAME_OVER_INPUT_DELAY = 700
 const HERO_FRAME_HEIGHT = 224
@@ -15,21 +15,35 @@ const GAME_OVER_TARGET_CHARACTER_HEIGHT = 184
 const GAME_OVER_HERO_SCALE = GAME_OVER_TARGET_CHARACTER_HEIGHT / HERO_FRAME_HEIGHT
 const GAME_OVER_DRAGON_SCALE = GAME_OVER_TARGET_CHARACTER_HEIGHT / DRAGON_FRAME_HEIGHT
 
+type GameOverAction = 'retry-full' | 'retry-stage' | 'title'
+
+interface GameOverOption {
+  action: GameOverAction
+  label: string
+  y: number
+}
+
 export class GameOverScene extends Phaser.Scene {
   private gameOverInputReady = false
   private transitioning = false
   private selectedOption = 0
   private optionTexts: Phaser.GameObjects.Text[] = []
+  private options: GameOverOption[] = []
+  private stageIndex = 0
+  private difficultyId: DifficultyId = 'easy'
 
   constructor() {
     super({ key: 'GameOverScene' })
   }
 
-  init() {
+  init(data: { stageIndex?: number }) {
     this.gameOverInputReady = false
     this.transitioning = false
     this.selectedOption = 0
     this.optionTexts = []
+    this.options = []
+    this.stageIndex = data.stageIndex ?? 0
+    this.difficultyId = getSelectedDifficultyId()
   }
 
   create() {
@@ -50,8 +64,10 @@ export class GameOverScene extends Phaser.Scene {
       .sprite(GAME_WIDTH / 2, GAME_HEIGHT * 0.45, character === 'dragon' ? 'dragon-player' : 'hero', 20)
     characterSprite.setScale(character === 'dragon' ? GAME_OVER_DRAGON_SCALE : GAME_OVER_HERO_SCALE)
 
-    const retryText = this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT * 0.66, modeContent.retry.title, {
+    this.options = this.createOptions()
+    this.optionTexts = this.options.map((option, index) => {
+      const text = this.add
+      .text(GAME_WIDTH / 2, option.y, option.label, {
         fontFamily: 'monospace',
         fontSize: '17px',
         color: '#e0e0e0',
@@ -60,17 +76,13 @@ export class GameOverScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true })
 
-    const titleText = this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT * 0.72, modeContent.retry.backToTitle, {
-        fontFamily: 'monospace',
-        fontSize: '17px',
-        color: '#e0e0e0',
-        fontStyle: 'bold',
+      text.on('pointerover', () => selectOption(index))
+      text.on('pointerdown', () => {
+        selectOption(index)
+        activateSelectedOption()
       })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true })
-
-    this.optionTexts = [retryText, titleText]
+      return text
+    })
     this.updateSelectedOption()
 
     this.add
@@ -81,11 +93,14 @@ export class GameOverScene extends Phaser.Scene {
       })
       .setOrigin(0.5)
 
-    const transitionTo = (sceneKey: 'StoryScene' | 'TitleScene', sceneData?: Record<string, unknown>) => {
+    const transitionTo = (
+      sceneKey: 'StoryScene' | 'StageScene' | 'TitleScene',
+      sceneData: Record<string, unknown> | undefined,
+      prepare: () => void,
+    ) => {
       if (!this.gameOverInputReady || this.transitioning) return
       this.transitioning = true
-      runState.reset()
-      scoreManager.reset()
+      prepare()
 
       let hasStarted = false
       const startScene = () => {
@@ -106,11 +121,26 @@ export class GameOverScene extends Phaser.Scene {
         sequenceId: 'intro',
         nextScene: 'StageScene',
         nextData: { stageIndex: 0 },
+      }, () => {
+        runState.reset()
+        scoreManager.reset()
+      })
+    }
+
+    const retryCurrentStage = () => {
+      if (!this.gameOverInputReady || this.transitioning) return
+      progressStorage.recordAttempt(getSelectedPlayerCharacter(), getSelectedDifficultyId())
+      transitionTo('StageScene', { stageIndex: this.stageIndex }, () => {
+        scoreManager.penalizePercent(CURRENT_STAGE_RESTART_SCORE_PENALTY)
+        runState.reset()
       })
     }
 
     const backToTitle = () => {
-      transitionTo('TitleScene')
+      transitionTo('TitleScene', undefined, () => {
+        runState.reset()
+        scoreManager.reset()
+      })
     }
 
     const selectOption = (index: number) => {
@@ -118,26 +148,19 @@ export class GameOverScene extends Phaser.Scene {
       this.updateSelectedOption()
     }
     const activateSelectedOption = () => {
-      if (this.selectedOption === 0) retry()
+      const action = this.options[this.selectedOption]?.action
+      if (action === 'retry-full') retry()
+      else if (action === 'retry-stage') retryCurrentStage()
       else backToTitle()
     }
 
-    retryText.on('pointerover', () => selectOption(0))
-    titleText.on('pointerover', () => selectOption(1))
-    retryText.on('pointerdown', () => {
-      selectOption(0)
-      activateSelectedOption()
-    })
-    titleText.on('pointerdown', () => {
-      selectOption(1)
-      activateSelectedOption()
-    })
     this.time.delayedCall(MIN_GAME_OVER_INPUT_DELAY, () => {
       this.gameOverInputReady = true
       this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
         if (!this.gameOverInputReady || this.transitioning) return
         if (event.code === 'ArrowUp' || event.code === 'ArrowDown') {
-          this.selectedOption = this.selectedOption === 0 ? 1 : 0
+          const direction = event.code === 'ArrowUp' ? -1 : 1
+          this.selectedOption = Phaser.Math.Wrap(this.selectedOption + direction, 0, this.options.length)
           this.updateSelectedOption()
           return
         }
@@ -146,6 +169,22 @@ export class GameOverScene extends Phaser.Scene {
         }
       })
     })
+  }
+
+  private createOptions(): GameOverOption[] {
+    const content = getGameModeContent()
+    if (this.difficultyId !== 'easy') {
+      return [
+        { action: 'retry-full', label: content.retry.title, y: GAME_HEIGHT * 0.66 },
+        { action: 'title', label: content.retry.backToTitle, y: GAME_HEIGHT * 0.72 },
+      ]
+    }
+
+    return [
+      { action: 'retry-full', label: '처음부터 다시 시작하기', y: GAME_HEIGHT * 0.64 },
+      { action: 'retry-stage', label: '해당 스테이지부터 다시 시작하기', y: GAME_HEIGHT * 0.7 },
+      { action: 'title', label: content.retry.backToTitle, y: GAME_HEIGHT * 0.76 },
+    ]
   }
 
   private updateSelectedOption() {
@@ -159,7 +198,7 @@ export class GameOverScene extends Phaser.Scene {
   }
 
   private getOptionLabel(index: number) {
-    const label = index === 0 ? getGameModeContent().retry.title : getGameModeContent().retry.backToTitle
+    const label = this.options[index]?.label ?? ''
     return label.replace(/^▶\s*/, '')
   }
 }

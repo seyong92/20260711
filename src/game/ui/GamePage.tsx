@@ -6,6 +6,7 @@ import { siteContent } from '../../data/siteContent'
 import { buildAppPath } from '../../lib/routes'
 import { createGameConfig } from '../core/config'
 import type { PlayerCharacterId } from '../core/systems/PlayerSelection'
+import { PROGRESS_TAMPER_EVENT, progressStorage } from '../core/systems/ProgressStorage'
 import { getGameModeContent } from '../content/gameContent'
 import { getLeaderboard, submitScore } from '../api/scoreboard'
 import styles from './GamePage.module.css'
@@ -24,6 +25,7 @@ export function GamePage() {
   const [leaderboard, setLeaderboard] = useState<Array<{ playerName: string; score: number }>>([])
   const [name, setName] = useState('')
   const [message, setMessage] = useState('')
+  const [progressWarningVisible, setProgressWarningVisible] = useState(false)
 
   const { gameConfig } = siteContent
   const defaultModeContent = getGameModeContent('bride')
@@ -45,6 +47,17 @@ export function GamePage() {
     return () => {
       document.body.style.overflow = previousOverflow
       document.body.style.overscrollBehavior = previousOverscroll
+    }
+  }, [])
+
+  useEffect(() => {
+    const handleProgressReset = () => {
+      setProgressWarningVisible(true)
+    }
+    window.addEventListener(PROGRESS_TAMPER_EVENT, handleProgressReset)
+    progressStorage.initialize()
+    return () => {
+      window.removeEventListener(PROGRESS_TAMPER_EVENT, handleProgressReset)
     }
   }, [])
 
@@ -182,6 +195,24 @@ export function GamePage() {
                 {gameConfig.homeHrefLabel}
               </a>
             </div>
+          </div>
+        </div>
+      )}
+
+      {progressWarningVisible && (
+        <div className={styles.overlay}>
+          <div className={styles.card}>
+            <h2 className={styles.cardTitle}>저장 데이터가 초기화되었습니다</h2>
+            <p className={styles.notice}>
+              저장된 진행도에서 조작 또는 손상이 감지되어 데이터를 새로 생성했어요.
+            </p>
+            <button
+              className={styles.button}
+              type="button"
+              onClick={() => setProgressWarningVisible(false)}
+            >
+              확인
+            </button>
           </div>
         </div>
       )}

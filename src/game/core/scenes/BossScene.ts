@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 
 import { BOSS_CONFIGS } from '../../content/bosses'
-import { getDifficultyConfig } from '../../content/difficulty'
+import { getDifficultyConfig, getSelectedDifficultyId } from '../../content/difficulty'
 import { getEnemyConfig } from '../../content/enemies'
 import { ITEM_CONFIGS } from '../../content/items'
 import { getStageConfig, STAGES } from '../../content/stages'
@@ -15,6 +15,7 @@ import { MOBILE_RANGED_AUTOFIRE_ENABLED, Player } from '../entities/Player'
 import { Bullet, BulletPool } from '../systems/BulletPool'
 import { HitboxDebugOverlay } from '../systems/HitboxDebugOverlay'
 import { getSelectedPlayerCharacter } from '../systems/PlayerSelection'
+import { progressStorage } from '../systems/ProgressStorage'
 import { runState } from '../systems/RunState'
 import { scoreManager } from '../systems/ScoreManager'
 import { ScrollManager } from '../systems/ScrollManager'
@@ -288,6 +289,7 @@ export class BossScene extends Phaser.Scene {
 
   private restartFromPauseMenu() {
     this.preparePauseMenuTransition()
+    progressStorage.recordAttempt(getSelectedPlayerCharacter(), getSelectedDifficultyId())
     scoreManager.reset()
     runState.reset()
     this.cleanup()
@@ -313,6 +315,7 @@ export class BossScene extends Phaser.Scene {
 
   private onBossDefeated() {
     scoreManager.addBossKill()
+    progressStorage.recordStageClear(getSelectedPlayerCharacter(), getSelectedDifficultyId(), this.stageIndex)
     this.add
       .particles(this.boss.x, this.boss.y, 'particle', {
         speed: { min: 50, max: 150 },

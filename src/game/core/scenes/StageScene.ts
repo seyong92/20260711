@@ -9,7 +9,9 @@ import { MOBILE_RANGED_AUTOFIRE_ENABLED, Player } from '../entities/Player'
 import { Bullet, BulletPool } from '../systems/BulletPool'
 import { EnemySpawner } from '../systems/EnemySpawner'
 import { HitboxDebugOverlay } from '../systems/HitboxDebugOverlay'
+import { getSelectedDifficultyId } from '../../content/difficulty'
 import { getSelectedPlayerCharacter } from '../systems/PlayerSelection'
+import { progressStorage } from '../systems/ProgressStorage'
 import { runState } from '../systems/RunState'
 import { scoreManager } from '../systems/ScoreManager'
 import { ScrollManager } from '../systems/ScrollManager'
@@ -338,6 +340,7 @@ export class StageScene extends Phaser.Scene {
 
   private restartFromPauseMenu() {
     this.preparePauseMenuTransition()
+    progressStorage.recordAttempt(getSelectedPlayerCharacter(), getSelectedDifficultyId())
     scoreManager.reset()
     runState.reset()
     this.cleanup()

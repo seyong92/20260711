@@ -1,8 +1,10 @@
 import Phaser from 'phaser'
 
+import { getSelectedDifficultyId } from '../../content/difficulty'
 import { getGameModeContent } from '../../content/gameContent'
 import { GAME_HEIGHT, GAME_WIDTH } from '../constants'
 import { getSelectedPlayerCharacter } from '../systems/PlayerSelection'
+import { progressStorage } from '../systems/ProgressStorage'
 import { runState } from '../systems/RunState'
 import { scoreManager } from '../systems/ScoreManager'
 
@@ -98,6 +100,8 @@ export class GameOverScene extends Phaser.Scene {
     }
 
     const retry = () => {
+      if (!this.gameOverInputReady || this.transitioning) return
+      progressStorage.recordAttempt(getSelectedPlayerCharacter(), getSelectedDifficultyId())
       transitionTo('StoryScene', {
         sequenceId: 'intro',
         nextScene: 'StageScene',

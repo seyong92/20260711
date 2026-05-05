@@ -13,6 +13,7 @@ import {
   resetSelectedPlayerCharacter,
   setSelectedPlayerCharacter,
 } from '../systems/PlayerSelection'
+import { progressStorage } from '../systems/ProgressStorage'
 import { isHitboxDebugEnabled, toggleHitboxDebug } from '../systems/DebugMode'
 import { runState } from '../systems/RunState'
 import { scoreManager } from '../systems/ScoreManager'
@@ -384,6 +385,7 @@ export class TitleScene extends Phaser.Scene {
       if (this.started || this.modeTransitioning) return
       this.started = true
       setSelectedDifficulty(difficultyId)
+      progressStorage.recordAttempt(getModeId(), difficultyId)
       closeDifficultyPanel()
       this.cameras.main.fadeOut(500, 0, 0, 0)
       this.cameras.main.once('camerafadeoutcomplete', () => {

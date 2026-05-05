@@ -1,8 +1,10 @@
 import Phaser from 'phaser'
 
+import { getSelectedDifficultyId } from '../../content/difficulty'
 import { getGameModeContent } from '../../content/gameContent'
 import { GAME_HEIGHT, GAME_WIDTH } from '../constants'
 import { getSelectedPlayerCharacter } from '../systems/PlayerSelection'
+import { progressStorage } from '../systems/ProgressStorage'
 import { scoreManager } from '../systems/ScoreManager'
 
 export class VictoryScene extends Phaser.Scene {
@@ -19,6 +21,7 @@ export class VictoryScene extends Phaser.Scene {
 
     const score = scoreManager.getScore()
     const playTime = scoreManager.getPlayTime()
+    progressStorage.recordHighScore(character, getSelectedDifficultyId(), score)
     this.add
       .text(GAME_WIDTH / 2, GAME_HEIGHT * 0.42, `${modeContent.uiLabels.finalScoreLabel}: ${score.toLocaleString()}`, {
         fontFamily: 'monospace',

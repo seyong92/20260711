@@ -291,9 +291,11 @@ export const siteContent: SiteContent = {
               alt: '결혼식장에서 손을 잡고 하객에게 손인사를 건네는 용사와 용',
             },
             {
-              fileName: 'ending-02.png',
+              fileName: 'shared/ending-final-pixel.png',
+              revealFileName: 'shared/ending-final-photo.jpg',
+              variant: 'mosaicReveal',
               caption: '이제 두 사람의 앞에는 꽃길만 남아있겠죠?',
-              alt: '꽃길이 이어진 결혼식장 출구에서 손을 잡고 미래를 바라보는 용사와 용',
+              alt: '웨딩 촬영장에서 나란히 선 용사와 용',
             },
             {
               variant: 'blackout',
@@ -400,9 +402,11 @@ export const siteContent: SiteContent = {
               alt: '결혼식장에서 손을 잡고 하객에게 손인사를 건네는 용사와 용',
             },
             {
-              fileName: 'ending-02.png',
+              fileName: 'shared/ending-final-pixel.png',
+              revealFileName: 'shared/ending-final-photo.jpg',
+              variant: 'mosaicReveal',
               caption: '이제 두 사람의 앞에는 꽃길만 남아있겠죠?',
-              alt: '꽃길이 이어진 결혼식장 출구에서 손을 잡고 미래를 바라보는 용과 용사',
+              alt: '웨딩 촬영장에서 나란히 선 용과 용사',
             },
             {
               variant: 'blackout',

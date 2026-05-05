@@ -41,7 +41,6 @@ export function createGameConfig(parent: HTMLElement): Phaser.Types.Core.GameCon
       StoryScene,
       StageScene,
       BossScene,
-      // EndingCreditsScene is temporarily disabled until the photo credits are ready to publish.
       VictoryScene,
       GameOverScene,
     ],

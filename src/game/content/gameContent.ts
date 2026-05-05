@@ -13,9 +13,16 @@ export function getStoryImageKey(character: GameModeId, sequenceId: StorySequenc
   return `story-${character}-${sequenceId}-${slideIndex}`
 }
 
+export function getStoryRevealImageKey(character: GameModeId, sequenceId: StorySequenceId, slideIndex: number) {
+  return `${getStoryImageKey(character, sequenceId, slideIndex)}-reveal`
+}
+
 export function getStoryImageUrl(character: GameModeId, fileName: string) {
   const baseUrl = import.meta.env.BASE_URL.endsWith('/')
     ? import.meta.env.BASE_URL
     : `${import.meta.env.BASE_URL}/`
+  if (fileName.startsWith('shared/')) {
+    return `${baseUrl}images/game/story/${fileName}`
+  }
   return `${baseUrl}images/game/story/${character}/${fileName}`
 }

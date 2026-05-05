@@ -7,13 +7,13 @@ import {
 } from '../../content/difficulty'
 import { getGameModeContent } from '../../content/gameContent'
 import { STAGES } from '../../content/stages'
-import type { GameModeId } from '../../../types/site'
+import type { GameModeId, StorySequenceId } from '../../../types/site'
 import { GAME_HEIGHT, GAME_WIDTH } from '../constants'
 import {
   resetSelectedPlayerCharacter,
   setSelectedPlayerCharacter,
 } from '../systems/PlayerSelection'
-import { enableHitboxDebug, isHitboxDebugEnabled } from '../systems/DebugMode'
+import { isHitboxDebugEnabled, toggleHitboxDebug } from '../systems/DebugMode'
 import { runState } from '../systems/RunState'
 import { scoreManager } from '../systems/ScoreManager'
 
@@ -37,12 +37,23 @@ const HIDDEN_CODE: HiddenCodeInput[] = [
   'right',
   'right',
 ]
-const DEBUG_CODE = 'kaist11'
+const CUTSCENE_CODE = 'kaist11'
+const DEBUG_OPTIONS_CODE = 'dgist15'
 const STAGE_SKIP_CODES: Record<string, number> = {
   dgist2: 1,
   dgist3: 2,
 }
-const MAX_STAGE_SKIP_CODE_LENGTH = Math.max(...Object.keys(STAGE_SKIP_CODES).map((code) => code.length))
+const MAX_DEBUG_CODE_LENGTH = Math.max(
+  CUTSCENE_CODE.length,
+  DEBUG_OPTIONS_CODE.length,
+  ...Object.keys(STAGE_SKIP_CODES).map((code) => code.length),
+)
+const CUTSCENE_SEQUENCE_OPTIONS: Array<{ id: StorySequenceId; label: string }> = [
+  { id: 'intro', label: 'INTRO' },
+  { id: 'afterStage1', label: 'AFTER STAGE 1' },
+  { id: 'afterStage2', label: 'AFTER STAGE 2' },
+  { id: 'ending', label: 'ENDING' },
+]
 const MODE_TRANSITION_STRIPE_COUNT = 14
 const MODE_TRANSITION_STRIPE_DURATION = 120
 const MODE_TRANSITION_STRIPE_STAGGER = 13
@@ -95,8 +106,7 @@ const TITLE_SPARKLES: [number, number, number][] = [
 
 export class TitleScene extends Phaser.Scene {
   private hiddenCodeIndex = 0
-  private debugCodeIndex = 0
-  private stageSkipCodeBuffer = ''
+  private debugCodeBuffer = ''
   private dragonSelected = false
   private started = false
   private modeTransitioning = false
@@ -108,8 +118,7 @@ export class TitleScene extends Phaser.Scene {
   create() {
     resetSelectedPlayerCharacter()
     this.hiddenCodeIndex = 0
-    this.debugCodeIndex = 0
-    this.stageSkipCodeBuffer = ''
+    this.debugCodeBuffer = ''
     this.dragonSelected = false
     this.started = false
     this.modeTransitioning = false
@@ -130,6 +139,9 @@ export class TitleScene extends Phaser.Scene {
     let stageSelectStageIndex = 0
     let stageSelectDifficultyId = getSelectedDifficultyId()
     let stageSelectSelectedIndex = 0
+    let cutsceneSelectPanel: Phaser.GameObjects.Container | null = null
+    let cutsceneSelectSequenceIndex = 0
+    let cutsceneSelectSelectedIndex = 1
     const titleBg = this.add
       .image(GAME_WIDTH / 2, GAME_HEIGHT / 2, modeStyle.backgroundKey)
       .setOrigin(0.5)
@@ -325,30 +337,6 @@ export class TitleScene extends Phaser.Scene {
       }
     }
 
-    const recordDebugCodeInput = (event: KeyboardEvent) => {
-      if (isHitboxDebugEnabled()) return
-      const key = event.key.toLowerCase()
-      if (key !== DEBUG_CODE[this.debugCodeIndex]) {
-        this.debugCodeIndex = key === DEBUG_CODE[0] ? 1 : 0
-        return
-      }
-
-      this.debugCodeIndex++
-      if (this.debugCodeIndex < DEBUG_CODE.length) return
-
-      enableHitboxDebug()
-      this.debugCodeIndex = 0
-      this.add
-        .text(GAME_WIDTH / 2, GAME_HEIGHT * 0.72, 'HITBOX DEBUG ON', {
-          fontFamily: 'monospace',
-          fontSize: '12px',
-          color: '#4aa3ff',
-          fontStyle: 'bold',
-        })
-        .setOrigin(0.5)
-        .setDepth(80)
-    }
-
     const closeDifficultyPanel = () => {
       difficultyPanel?.destroy(true)
       difficultyPanel = null
@@ -361,6 +349,11 @@ export class TitleScene extends Phaser.Scene {
       stageSelectPanel = null
     }
 
+    const closeCutsceneSelectPanel = () => {
+      cutsceneSelectPanel?.destroy(true)
+      cutsceneSelectPanel = null
+    }
+
     const startStageDirectly = (stageIndex: number, difficultyId: DifficultyId) => {
       if (this.started || this.modeTransitioning) return
       this.started = true
@@ -370,6 +363,20 @@ export class TitleScene extends Phaser.Scene {
       this.cameras.main.fadeOut(300, 0, 0, 0)
       this.cameras.main.once('camerafadeoutcomplete', () => {
         this.scene.start('StageScene', { stageIndex })
+      })
+    }
+
+    const startCutsceneDirectly = (sequenceId: StorySequenceId) => {
+      if (this.started || this.modeTransitioning) return
+      this.started = true
+      scoreManager.reset()
+      runState.reset()
+      this.cameras.main.fadeOut(300, 0, 0, 0)
+      this.cameras.main.once('camerafadeoutcomplete', () => {
+        this.scene.start('StoryScene', {
+          sequenceId,
+          nextScene: 'TitleScene',
+        })
       })
     }
 
@@ -417,6 +424,7 @@ export class TitleScene extends Phaser.Scene {
       if (this.started || this.modeTransitioning) return
       const shouldResetSelection = !difficultyPanel && !preserveSelection
       closeStageSelectPanel()
+      closeCutsceneSelectPanel()
       closeDifficultyPanel()
       if (shouldResetSelection) {
         difficultyPanelSelectedIndex = getSelectedDifficultyId() === 'hard' ? 1 : 0
@@ -473,13 +481,14 @@ export class TitleScene extends Phaser.Scene {
       }
       const shouldResetSelection = !stageSelectPanel || !replaceOpenPanel
       closeDifficultyPanel()
+      closeCutsceneSelectPanel()
       closeStageSelectPanel()
       stageSelectStageIndex = stageIndex
       if (shouldResetSelection) {
         stageSelectDifficultyId = getSelectedDifficultyId()
         stageSelectSelectedIndex = stageIndex
       }
-      const { container, panelY } = createPanelShell('스테이지 선택', 340)
+      const { container, panelY } = createPanelShell('디버그 옵션', 378)
       stageSelectPanel = container
       const rows: Phaser.GameObjects.Text[] = []
       const backs: Phaser.GameObjects.Rectangle[] = []
@@ -488,6 +497,7 @@ export class TitleScene extends Phaser.Scene {
         if (index < STAGES.length) return `STAGE ${index + 1}: ${STAGES[index].name}`
         if (index === 3) return `EASY ${stageSelectDifficultyId === 'easy' ? 'ON' : 'OFF'}`
         if (index === 4) return `HARD ${stageSelectDifficultyId === 'hard' ? 'ON' : 'OFF'}`
+        if (index === 5) return `HITBOX ${isHitboxDebugEnabled() ? 'ON' : 'OFF'}`
         return 'START'
       }
 
@@ -498,7 +508,7 @@ export class TitleScene extends Phaser.Scene {
           const activeDifficulty =
             (index === 3 && stageSelectDifficultyId === 'easy') ||
             (index === 4 && stageSelectDifficultyId === 'hard')
-          const active = activeStage || activeDifficulty
+          const active = activeStage || activeDifficulty || (index === 5 && isHitboxDebugEnabled())
           text.setText(`${selected ? '> ' : '  '}${getRowLabel(index)}`)
           text.setColor(selected || active ? modeStyle.accentColor : '#e0e0e0')
           text.setAlpha(selected || active ? 1 : 0.72)
@@ -512,11 +522,12 @@ export class TitleScene extends Phaser.Scene {
         if (index < STAGES.length) stageSelectStageIndex = index
         else if (index === 3) stageSelectDifficultyId = 'easy'
         else if (index === 4) stageSelectDifficultyId = 'hard'
+        else if (index === 5) toggleHitboxDebug()
         else startStageDirectly(stageSelectStageIndex, stageSelectDifficultyId)
         updateSelection()
       }
 
-      for (let index = 0; index < 6; index++) {
+      for (let index = 0; index < 7; index++) {
         const y = panelY + 94 + index * 38
         const back = this.add
           .rectangle(GAME_WIDTH / 2, y, 270, 31, 0x172033, 0.88)
@@ -537,6 +548,89 @@ export class TitleScene extends Phaser.Scene {
         })
         text.on('pointerover', () => {
           stageSelectSelectedIndex = index
+          updateSelection()
+        })
+        back.on('pointerdown', () => activateRow(index))
+        text.on('pointerdown', () => activateRow(index))
+        backs.push(back)
+        rows.push(text)
+        container.add([back, text])
+      }
+      updateSelection()
+    }
+
+    const showCutsceneSelectPanel = (replaceOpenPanel = false) => {
+      if (this.started || this.modeTransitioning) return
+      const shouldResetSelection = !cutsceneSelectPanel || !replaceOpenPanel
+      closeDifficultyPanel()
+      closeStageSelectPanel()
+      closeCutsceneSelectPanel()
+      if (shouldResetSelection) {
+        cutsceneSelectSequenceIndex = 0
+        cutsceneSelectSelectedIndex = 1
+      }
+      const { container, panelY } = createPanelShell('컷씬 조회', 340)
+      cutsceneSelectPanel = container
+      const rows: Phaser.GameObjects.Text[] = []
+      const backs: Phaser.GameObjects.Rectangle[] = []
+
+      const getRowLabel = (index: number) => {
+        if (index === 0) return `MODE ${getModeId().toUpperCase()}`
+        if (index >= 1 && index <= CUTSCENE_SEQUENCE_OPTIONS.length) {
+          return CUTSCENE_SEQUENCE_OPTIONS[index - 1].label
+        }
+        return 'START'
+      }
+
+      const updateSelection = () => {
+        rows.forEach((text, index) => {
+          const selected = index === cutsceneSelectSelectedIndex
+          const activeCutscene = index >= 1 && index - 1 === cutsceneSelectSequenceIndex
+          const active = index === 0 || activeCutscene
+          text.setText(`${selected ? '> ' : '  '}${getRowLabel(index)}`)
+          text.setColor(selected || active ? modeStyle.accentColor : '#e0e0e0')
+          text.setAlpha(selected || active ? 1 : 0.72)
+          backs[index].setFillStyle(selected ? 0x25344f : active ? 0x1d3246 : 0x172033, selected ? 0.96 : 0.86)
+          backs[index].setStrokeStyle(1, selected || active ? modeStyle.accentNumber : 0xffffff, selected ? 0.78 : 0.2)
+        })
+      }
+
+      const activateRow = (index: number) => {
+        cutsceneSelectSelectedIndex = index
+        if (index === 0) {
+          this.dragonSelected = !this.dragonSelected
+          setSelectedPlayerCharacter(getModeId())
+          applyModeContent()
+        } else if (index >= 1 && index <= CUTSCENE_SEQUENCE_OPTIONS.length) {
+          cutsceneSelectSequenceIndex = index - 1
+        } else {
+          startCutsceneDirectly(CUTSCENE_SEQUENCE_OPTIONS[cutsceneSelectSequenceIndex].id)
+          return
+        }
+        updateSelection()
+      }
+
+      for (let index = 0; index < 6; index++) {
+        const y = panelY + 94 + index * 38
+        const back = this.add
+          .rectangle(GAME_WIDTH / 2, y, 270, 31, 0x172033, 0.88)
+          .setStrokeStyle(1, 0xffffff, 0.2)
+          .setInteractive({ useHandCursor: true })
+        const text = this.add
+          .text(GAME_WIDTH / 2, y, '', {
+            fontFamily: 'monospace',
+            fontSize: '14px',
+            color: '#e0e0e0',
+            fontStyle: 'bold',
+          })
+          .setOrigin(0.5)
+          .setInteractive({ useHandCursor: true })
+        back.on('pointerover', () => {
+          cutsceneSelectSelectedIndex = index
+          updateSelection()
+        })
+        text.on('pointerover', () => {
+          cutsceneSelectSelectedIndex = index
           updateSelection()
         })
         back.on('pointerdown', () => activateRow(index))
@@ -590,12 +684,12 @@ export class TitleScene extends Phaser.Scene {
         return true
       }
       if (event.code === 'ArrowUp') {
-        stageSelectSelectedIndex = Phaser.Math.Wrap(stageSelectSelectedIndex - 1, 0, 6)
+        stageSelectSelectedIndex = Phaser.Math.Wrap(stageSelectSelectedIndex - 1, 0, 7)
         showStageSelectPanel(stageSelectStageIndex, true)
         return true
       }
       if (event.code === 'ArrowDown') {
-        stageSelectSelectedIndex = Phaser.Math.Wrap(stageSelectSelectedIndex + 1, 0, 6)
+        stageSelectSelectedIndex = Phaser.Math.Wrap(stageSelectSelectedIndex + 1, 0, 7)
         showStageSelectPanel(stageSelectStageIndex, true)
         return true
       }
@@ -618,6 +712,7 @@ export class TitleScene extends Phaser.Scene {
         if (stageSelectSelectedIndex < STAGES.length) stageSelectStageIndex = stageSelectSelectedIndex
         else if (stageSelectSelectedIndex === 3) stageSelectDifficultyId = 'easy'
         else if (stageSelectSelectedIndex === 4) stageSelectDifficultyId = 'hard'
+        else if (stageSelectSelectedIndex === 5) toggleHitboxDebug()
         else {
           startStageDirectly(stageSelectStageIndex, stageSelectDifficultyId)
           return true
@@ -628,14 +723,75 @@ export class TitleScene extends Phaser.Scene {
       return false
     }
 
-    const recordStageSkipCodeInput = (event: KeyboardEvent) => {
+    const handleCutsceneSelectPanelKey = (event: KeyboardEvent) => {
+      if (!cutsceneSelectPanel) return false
+      if (event.repeat) return true
+      if (event.code === 'Escape') {
+        closeCutsceneSelectPanel()
+        return true
+      }
+      if (event.code === 'ArrowUp') {
+        cutsceneSelectSelectedIndex = Phaser.Math.Wrap(cutsceneSelectSelectedIndex - 1, 0, 6)
+        showCutsceneSelectPanel(true)
+        return true
+      }
+      if (event.code === 'ArrowDown') {
+        cutsceneSelectSelectedIndex = Phaser.Math.Wrap(cutsceneSelectSelectedIndex + 1, 0, 6)
+        showCutsceneSelectPanel(true)
+        return true
+      }
+      if (event.code === 'KeyM') {
+        cutsceneSelectSelectedIndex = 0
+        this.dragonSelected = !this.dragonSelected
+        setSelectedPlayerCharacter(getModeId())
+        applyModeContent()
+        showCutsceneSelectPanel(true)
+        return true
+      }
+      if (event.code.startsWith('Digit')) {
+        const digit = Number(event.code.replace('Digit', ''))
+        if (digit >= 1 && digit <= CUTSCENE_SEQUENCE_OPTIONS.length) {
+          cutsceneSelectSequenceIndex = digit - 1
+          cutsceneSelectSelectedIndex = digit
+          showCutsceneSelectPanel(true)
+          return true
+        }
+      }
+      if (event.code === 'Enter' || event.code === 'Space' || event.code === 'KeyZ' || event.code === 'KeyX') {
+        if (cutsceneSelectSelectedIndex === 0) {
+          this.dragonSelected = !this.dragonSelected
+          setSelectedPlayerCharacter(getModeId())
+          applyModeContent()
+          showCutsceneSelectPanel(true)
+        } else if (cutsceneSelectSelectedIndex >= 1 && cutsceneSelectSelectedIndex <= CUTSCENE_SEQUENCE_OPTIONS.length) {
+          cutsceneSelectSequenceIndex = cutsceneSelectSelectedIndex - 1
+          showCutsceneSelectPanel(true)
+        } else {
+          startCutsceneDirectly(CUTSCENE_SEQUENCE_OPTIONS[cutsceneSelectSequenceIndex].id)
+        }
+        return true
+      }
+      return false
+    }
+
+    const recordDebugCodeInput = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase()
       if (!/^[a-z0-9]$/.test(key)) return
 
-      this.stageSkipCodeBuffer = `${this.stageSkipCodeBuffer}${key}`.slice(-MAX_STAGE_SKIP_CODE_LENGTH)
+      this.debugCodeBuffer = `${this.debugCodeBuffer}${key}`.slice(-MAX_DEBUG_CODE_LENGTH)
+      if (this.debugCodeBuffer.endsWith(DEBUG_OPTIONS_CODE)) {
+        this.debugCodeBuffer = ''
+        showStageSelectPanel(0)
+        return
+      }
+      if (this.debugCodeBuffer.endsWith(CUTSCENE_CODE)) {
+        this.debugCodeBuffer = ''
+        showCutsceneSelectPanel()
+        return
+      }
       for (const [code, stageIndex] of Object.entries(STAGE_SKIP_CODES)) {
-        if (!this.stageSkipCodeBuffer.endsWith(code)) continue
-        this.stageSkipCodeBuffer = ''
+        if (!this.debugCodeBuffer.endsWith(code)) continue
+        this.debugCodeBuffer = ''
         showStageSelectPanel(stageIndex)
         return
       }
@@ -649,8 +805,8 @@ export class TitleScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
       if (handleDifficultyPanelKey(event)) return
       if (handleStageSelectPanelKey(event)) return
+      if (handleCutsceneSelectPanelKey(event)) return
       recordDebugCodeInput(event)
-      recordStageSkipCodeInput(event)
       if (event.code === 'ArrowLeft') {
         recordCodeInput('left')
         return

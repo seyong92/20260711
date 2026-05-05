@@ -157,9 +157,10 @@ export type StorySequenceId = 'intro' | 'afterStage1' | 'afterStage2' | 'ending'
 
 export interface StorySlide {
   fileName?: string
+  revealFileName?: string
   caption: string
   alt: string
-  variant?: 'image' | 'blackout'
+  variant?: 'image' | 'blackout' | 'mosaicReveal'
 }
 
 export type StorySequences = Record<StorySequenceId, StorySlide[]>

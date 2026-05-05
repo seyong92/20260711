@@ -9,7 +9,6 @@ import titleBgBrideUrl from '../../assets/backgrounds/title-bg-bride-fantasy-pix
 import titleBgDragonUrl from '../../assets/backgrounds/title-bg-dragon-fantasy-pixel-v5.png'
 import titleLogoBrideUrl from '../../assets/title/title-logo-bride.png'
 import titleLogoDragonUrl from '../../assets/title/title-logo-dragon.png'
-import victoryBgUrl from '../../assets/backgrounds/victory-bg.png'
 import basicBulletSpriteUrl from '../../assets/sprites/basic_bullet-v5-notes.png'
 import bossFlowerBulletSpriteUrl from '../../assets/sprites/basic_bullet-v3.png'
 import bossPianoSpriteUrl from '../../assets/sprites/boss-piano-v2.png'
@@ -29,6 +28,7 @@ import playerShieldSpriteUrl from '../../assets/sprites/player-shield-v2.png'
 import {
   getGameModeContent,
   getStoryImageKey,
+  getStoryRevealImageKey,
   getStoryImageUrl,
   STORY_SEQUENCE_IDS,
 } from '../../content/gameContent'
@@ -64,10 +64,8 @@ export class BootScene extends Phaser.Scene {
     this.load.image('stage2-bg', stage2BgUrl)
     this.load.image('stage3-bg', stage3BgUrl)
     this.load.image('stage3-boss-bg', stage3DefenseClassroomBgUrl)
-    this.load.image('victory-bg', victoryBgUrl)
     this.load.image('game-over-bg', gameOverBgUrl)
     this.loadStoryImages()
-    // Ending credit photos are excluded from the public build for now.
     this.load.spritesheet('basic-bullet', basicBulletSpriteUrl, {
       frameWidth: BootScene.BASIC_BULLET_FRAME_SIZE,
       frameHeight: BootScene.BASIC_BULLET_FRAME_SIZE,
@@ -132,6 +130,12 @@ export class BootScene extends Phaser.Scene {
             getStoryImageKey(character, sequenceId, slideIndex),
             getStoryImageUrl(character, slide.fileName),
           )
+          if (slide.revealFileName) {
+            this.load.image(
+              getStoryRevealImageKey(character, sequenceId, slideIndex),
+              getStoryImageUrl(character, slide.revealFileName),
+            )
+          }
         })
       })
     })

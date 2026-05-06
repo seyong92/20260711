@@ -1,74 +1,172 @@
+import type { DifficultyId } from '../content/difficulty'
 import { gameContent } from '../content/gameContent'
-import type { LeaderboardResponse, ScoreSubmission, SubmitResponse } from './types'
+import type { LeaderboardResponse, ScoreEntry, ScoreSubmission, SubmitResponse } from './types'
+import { secureGameTransport } from './secureTransport'
 
-const mockEntries = [
+const LOCAL_STORAGE_KEY = 'wedding-game-scoreboard-v1'
+const STORAGE_VERSION = 1
+const DEFAULT_LOCAL_ENTRIES: ScoreEntry[] = [
   {
-    id: '1',
-    playerName: '용감한토끼',
-    score: 15000,
-    message: '결혼 축하해요!',
-    playTimeSeconds: 180,
-    createdAt: '2026-05-01T12:00:00Z',
-  },
-  {
-    id: '2',
-    playerName: '별빛사슴',
-    score: 12500,
-    message: '행복하세요~',
+    id: 'default-easy-bride',
+    playerName: '첫 용사',
+    score: 4800,
+    message: 'Easy 테스트 기록입니다.',
     playTimeSeconds: 210,
-    createdAt: '2026-05-01T11:00:00Z',
+    difficulty: 'easy',
+    character: 'bride',
+    createdAt: '2026-05-06T00:00:00.000Z',
   },
   {
-    id: '3',
-    playerName: '꽃구름',
-    score: 11000,
-    message: '축하축하!',
-    playTimeSeconds: 195,
-    createdAt: '2026-05-01T10:00:00Z',
+    id: 'default-normal-dragon',
+    playerName: '첫 용',
+    score: 9600,
+    message: 'Normal 테스트 기록입니다.',
+    playTimeSeconds: 185,
+    difficulty: 'normal',
+    character: 'dragon',
+    createdAt: '2026-05-06T00:01:00.000Z',
+  },
+  {
+    id: 'default-hard-bride',
+    playerName: '하드 용사',
+    score: 14400,
+    message: 'Hard 테스트 기록입니다.',
+    playTimeSeconds: 240,
+    difficulty: 'hard',
+    character: 'bride',
+    createdAt: '2026-05-06T00:02:00.000Z',
   },
 ]
 
+interface LocalScoreboardPayload {
+  version: typeof STORAGE_VERSION
+  entries: ScoreEntry[]
+}
+
 function getApiBaseUrl() {
-  return import.meta.env.VITE_GAME_SCORE_API_URL ?? gameContent.scoreApi.baseUrl
+  return (import.meta.env.VITE_GAME_SCORE_API_URL ?? gameContent.scoreApi.baseUrl).replace(/\/+$/, '')
 }
 
 function shouldUseMock() {
+  if (import.meta.env.VITE_GAME_SCORE_API_USE_MOCK) {
+    return import.meta.env.VITE_GAME_SCORE_API_USE_MOCK !== 'false'
+  }
   return gameContent.scoreApi.useMock
+}
+
+function createEntryId() {
+  if (crypto.randomUUID) return crypto.randomUUID()
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
+
+function compareScoreEntries(a: ScoreEntry, b: ScoreEntry) {
+  if (b.score !== a.score) return b.score - a.score
+  if (a.playTimeSeconds !== b.playTimeSeconds) return a.playTimeSeconds - b.playTimeSeconds
+  return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+}
+
+function isScoreEntry(value: unknown): value is ScoreEntry {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
+  const entry = value as Record<string, unknown>
+  return (
+    typeof entry.id === 'string' &&
+    typeof entry.playerName === 'string' &&
+    typeof entry.message === 'string' &&
+    typeof entry.score === 'number' &&
+    Number.isFinite(entry.score) &&
+    typeof entry.playTimeSeconds === 'number' &&
+    Number.isFinite(entry.playTimeSeconds) &&
+    (entry.difficulty === 'easy' || entry.difficulty === 'normal' || entry.difficulty === 'hard') &&
+    (entry.character === 'bride' || entry.character === 'dragon') &&
+    typeof entry.createdAt === 'string'
+  )
+}
+
+function readLocalScoreboard(): ScoreEntry[] {
+  try {
+    const stored = window.localStorage.getItem(LOCAL_STORAGE_KEY)
+    if (!stored) {
+      writeLocalScoreboard(DEFAULT_LOCAL_ENTRIES)
+      return DEFAULT_LOCAL_ENTRIES
+    }
+    const payload = JSON.parse(stored) as Partial<LocalScoreboardPayload>
+    if (payload.version !== STORAGE_VERSION || !Array.isArray(payload.entries)) return []
+    return payload.entries.filter(isScoreEntry)
+  } catch {
+    return []
+  }
+}
+
+function writeLocalScoreboard(entries: ScoreEntry[]) {
+  try {
+    const payload: LocalScoreboardPayload = {
+      version: STORAGE_VERSION,
+      entries,
+    }
+    window.localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(payload))
+  } catch {
+    // The game can still show the submitted run even if browser storage is unavailable.
+  }
 }
 
 export async function submitScore(data: ScoreSubmission): Promise<SubmitResponse> {
   if (shouldUseMock()) {
-    const entry = {
-      id: String(Date.now()),
+    const entry: ScoreEntry = {
+      id: createEntryId(),
       playerName: data.playerName,
-      score: data.score,
+      score: Math.max(0, Math.floor(data.score)),
       message: data.message,
-      playTimeSeconds: data.playTimeSeconds,
+      playTimeSeconds: Math.max(0, Math.floor(data.playTimeSeconds)),
+      difficulty: data.difficulty,
+      character: data.character,
       createdAt: new Date().toISOString(),
     }
-    mockEntries.push(entry)
-    mockEntries.sort((a, b) => b.score - a.score)
-    const rank = mockEntries.findIndex((record) => record.id === entry.id) + 1
+    const entries = [...readLocalScoreboard(), entry].sort(compareScoreEntries)
+    writeLocalScoreboard(entries)
+    const difficultyEntries = entries.filter((record) => record.difficulty === entry.difficulty)
+    const rank = difficultyEntries.findIndex((record) => record.id === entry.id) + 1
     return { success: true, rank, entry }
   }
 
-  const response = await fetch(`${getApiBaseUrl()}/scores`, {
+  await secureGameTransport.flushEvents()
+  const securePayload = await secureGameTransport.buildScoreEnvelope({
+    playerName: data.playerName,
+    score: data.score,
+    message: data.message,
+    playTimeSeconds: data.playTimeSeconds,
+    difficulty: data.difficulty,
+    character: data.character,
+    timestamp: data.timestamp,
+    finalEventHash: secureGameTransport.getCurrentHash() || data.finalEventHash,
+  })
+  if (!securePayload) {
+    throw new Error('Secure score transport is unavailable')
+  }
+
+  const response = await fetch(`${getApiBaseUrl()}/v1/scores`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+    body: JSON.stringify(securePayload),
   })
 
   return response.json()
 }
 
-export async function getLeaderboard(limit = 10): Promise<LeaderboardResponse> {
+export async function getLeaderboard(difficulty: DifficultyId, limit = 10): Promise<LeaderboardResponse> {
   if (shouldUseMock()) {
+    const entries = readLocalScoreboard()
+      .filter((entry) => entry.difficulty === difficulty)
+      .sort(compareScoreEntries)
     return {
-      entries: mockEntries.slice(0, limit),
-      totalCount: mockEntries.length,
+      entries: entries.slice(0, limit),
+      totalCount: entries.length,
     }
   }
 
-  const response = await fetch(`${getApiBaseUrl()}/scores/top?limit=${limit}`)
+  const params = new URLSearchParams({
+    difficulty,
+    limit: String(limit),
+  })
+  const response = await fetch(`${getApiBaseUrl()}/v1/scores/top?${params.toString()}`)
   return response.json()
 }

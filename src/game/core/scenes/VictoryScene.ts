@@ -14,6 +14,7 @@ export class VictoryScene extends Phaser.Scene {
 
   create() {
     const character = getSelectedPlayerCharacter()
+    const difficulty = getSelectedDifficultyId()
     const modeContent = getGameModeContent(character)
     scoreManager.addClearBonus()
     this.cameras.main.fadeIn(500, 0, 0, 0)
@@ -21,7 +22,7 @@ export class VictoryScene extends Phaser.Scene {
 
     const score = scoreManager.getScore()
     const playTime = scoreManager.getPlayTime()
-    progressStorage.recordHighScore(character, getSelectedDifficultyId(), score)
+    progressStorage.recordHighScore(character, difficulty, score)
     this.add
       .text(GAME_WIDTH / 2, GAME_HEIGHT * 0.42, `${modeContent.uiLabels.finalScoreLabel}: ${score.toLocaleString()}`, {
         fontFamily: 'monospace',
@@ -41,7 +42,7 @@ export class VictoryScene extends Phaser.Scene {
       .setOrigin(0.5)
 
     this.time.delayedCall(600, () => {
-      this.game.events.emit('game-ended', { score, playTime, character })
+      this.game.events.emit('game-ended', { score, playTime, character, difficulty })
     })
 
     this.game.events.once('restart-game', () => {

@@ -67,7 +67,7 @@ const STAGE_SELECT_HITBOX_INDEX = STAGE_SELECT_DIFFICULTY_START_INDEX + DIFFICUL
 const STAGE_SELECT_START_INDEX = STAGE_SELECT_HITBOX_INDEX + 1
 const STAGE_SELECT_ROW_COUNT = STAGE_SELECT_START_INDEX + 1
 const TITLE_ACTION_X = GAME_WIDTH - 118
-const TITLE_MENU_OPTIONS = ['게임 시작', '도전 과제'] as const
+const TITLE_MENU_OPTIONS = ['게임 시작', '도전 과제', 'High Score'] as const
 
 type TitleModeStyle = {
   backgroundKey: string
@@ -240,6 +240,19 @@ export class TitleScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true })
       .setDepth(14)
 
+    const highScoreText = this.add
+      .text(TITLE_ACTION_X, 612, '', {
+        fontFamily: '"Apple SD Gothic Neo", "Noto Sans KR", sans-serif',
+        fontSize: '18px',
+        color: '#e0e0e0',
+        fontStyle: 'bold',
+        stroke: '#0c1020',
+        strokeThickness: 5,
+      })
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(14)
+
     const dragonHintText = this.add
       .text(GAME_WIDTH / 2, GAME_HEIGHT * 0.5, HIDDEN_CODE_HINT_TEXT, {
         fontFamily: '"Apple SD Gothic Neo", "Noto Sans KR", sans-serif',
@@ -263,7 +276,7 @@ export class TitleScene extends Phaser.Scene {
     })
     let dragonHintTransitionLocked = false
 
-    const mainMenuTexts = [startText, achievementsText]
+    const mainMenuTexts = [startText, achievementsText, highScoreText]
     let mainMenuPulseTween: Phaser.Tweens.Tween | null = null
 
     let mobileStartText: Phaser.GameObjects.Text | null = null
@@ -273,6 +286,7 @@ export class TitleScene extends Phaser.Scene {
         subtitleText,
         startText,
         achievementsText,
+        highScoreText,
         titleSparkles,
         mobileStartText,
       ].filter(Boolean) as FadableGameObject[])
@@ -442,6 +456,7 @@ export class TitleScene extends Phaser.Scene {
       difficultyPanel = null
       startText.setVisible(true)
       achievementsText.setVisible(true)
+      highScoreText.setVisible(true)
       updateDragonHint()
       mobileStartText?.setVisible(true)
     }
@@ -455,6 +470,7 @@ export class TitleScene extends Phaser.Scene {
       achievementsMinScrollY = 0
       startText.setVisible(true)
       achievementsText.setVisible(true)
+      highScoreText.setVisible(true)
       updateDragonHint()
       mobileStartText?.setVisible(true)
     }
@@ -562,6 +578,7 @@ export class TitleScene extends Phaser.Scene {
       }
       startText.setVisible(false)
       achievementsText.setVisible(false)
+      highScoreText.setVisible(false)
       dragonHintText.setVisible(false)
       mobileStartText?.setVisible(false)
       const container = this.add.container(0, 0).setDepth(120)
@@ -625,6 +642,7 @@ export class TitleScene extends Phaser.Scene {
       closeAchievementsPanel()
       startText.setVisible(false)
       achievementsText.setVisible(false)
+      highScoreText.setVisible(false)
       dragonHintText.setVisible(false)
       mobileStartText?.setVisible(false)
 
@@ -1187,7 +1205,8 @@ export class TitleScene extends Phaser.Scene {
 
     const activateMainMenu = () => {
       if (mainMenuSelectedIndex === 0) showDifficultyPanel()
-      else showAchievementsPanel()
+      else if (mainMenuSelectedIndex === 1) showAchievementsPanel()
+      else this.game.events.emit('open-score-dashboard')
     }
 
     startText.on('pointerover', () => {
@@ -1198,6 +1217,10 @@ export class TitleScene extends Phaser.Scene {
       mainMenuSelectedIndex = 1
       updateMainMenu()
     })
+    highScoreText.on('pointerover', () => {
+      mainMenuSelectedIndex = 2
+      updateMainMenu()
+    })
     startText.on('pointerdown', () => {
       mainMenuSelectedIndex = 0
       updateMainMenu()
@@ -1205,6 +1228,11 @@ export class TitleScene extends Phaser.Scene {
     })
     achievementsText.on('pointerdown', () => {
       mainMenuSelectedIndex = 1
+      updateMainMenu()
+      activateMainMenu()
+    })
+    highScoreText.on('pointerdown', () => {
+      mainMenuSelectedIndex = 2
       updateMainMenu()
       activateMainMenu()
     })
@@ -1223,7 +1251,11 @@ export class TitleScene extends Phaser.Scene {
         return
       }
       if (event.code === 'ArrowUp' || event.code === 'ArrowDown') {
-        mainMenuSelectedIndex = mainMenuSelectedIndex === 0 ? 1 : 0
+        mainMenuSelectedIndex = Phaser.Math.Wrap(
+          mainMenuSelectedIndex + (event.code === 'ArrowUp' ? -1 : 1),
+          0,
+          TITLE_MENU_OPTIONS.length,
+        )
         updateMainMenu()
         return
       }
@@ -1234,7 +1266,12 @@ export class TitleScene extends Phaser.Scene {
     })
 
     if (!this.sys.game.device.os.desktop) {
-      mobileStartText = this.createMobileTitleControls(recordCodeInput, activateMainMenu, showAchievementsPanel)
+      mobileStartText = this.createMobileTitleControls(
+        recordCodeInput,
+        activateMainMenu,
+        showAchievementsPanel,
+        () => this.game.events.emit('open-score-dashboard'),
+      )
     }
 
     this.cameras.main.fadeIn(500, 0, 0, 0)
@@ -1244,6 +1281,7 @@ export class TitleScene extends Phaser.Scene {
     recordCodeInput: (input: HiddenCodeInput) => void,
     start: () => void,
     showAchievements: () => void,
+    showScoreDashboard: () => void,
   ) {
     const y = GAME_HEIGHT - 54
     let startButtonText: Phaser.GameObjects.Text | null = null
@@ -1267,10 +1305,11 @@ export class TitleScene extends Phaser.Scene {
       return text
     }
 
-    makeButton(52, 80, '◀', () => recordCodeInput('left'))
-    makeButton(148, 80, '▶', () => recordCodeInput('right'))
-    startButtonText = makeButton(276, 96, TITLE_MENU_OPTIONS[0], start)
-    makeButton(374, 86, '도전', showAchievements)
+    makeButton(42, 64, '◀', () => recordCodeInput('left'))
+    makeButton(114, 64, '▶', () => recordCodeInput('right'))
+    startButtonText = makeButton(216, 86, TITLE_MENU_OPTIONS[0], start)
+    makeButton(316, 70, '도전', showAchievements)
+    makeButton(390, 70, '점수', showScoreDashboard)
     return startButtonText
   }
 }

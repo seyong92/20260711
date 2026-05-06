@@ -99,6 +99,9 @@ gameConfig: {
 }
 ```
 
+프로덕션 빌드는 `.env.production`의 `VITE_GAME_SCORE_API_URL`과
+`VITE_GAME_SCORE_API_USE_MOCK=false`를 사용해 실제 점수 API를 호출한다.
+
 스테이지 이름, 적/보스/아이템 밸런스는 `src/game/content/*`에서 수정한다.
 
 ## GitHub Pages

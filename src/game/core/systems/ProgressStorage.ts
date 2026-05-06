@@ -5,6 +5,7 @@ import {
   isAchievementId,
   type AchievementId,
 } from '../../content/achievements'
+import { secureGameTransport } from '../../api/secureTransport'
 import type { PlayerCharacterId } from './PlayerSelection'
 
 const STORAGE_KEY = '__ygp0'
@@ -116,6 +117,13 @@ class ProgressStorage {
     this.updateProgress((progress) => {
       const slot = progress.modes[character][difficulty]
       slot.attempts = this.incrementCounter(slot.attempts)
+      this.sendSecureUpdate(progress, {
+        character,
+        difficulty,
+        eventType: 'attempt',
+        payload: { character, difficulty },
+        startRun: true,
+      })
     })
   }
 
@@ -125,18 +133,46 @@ class ProgressStorage {
     return this.updateProgress((progress) => {
       const slot = progress.modes[character][difficulty]
       slot.stageClears[stageIndex] = this.incrementCounter(slot.stageClears[stageIndex])
-      return this.addUnlockedAchievements(progress, achievements)
+      const unlocked = this.addUnlockedAchievements(progress, achievements)
+      this.sendSecureUpdate(progress, {
+        character,
+        difficulty,
+        eventType: 'stage_clear',
+        payload: { character, difficulty, stageIndex },
+      })
+      unlocked.forEach((achievementId) => {
+        this.sendSecureUpdate(progress, {
+          character,
+          difficulty,
+          eventType: 'achievement_unlock',
+          payload: { achievementId },
+        })
+      })
+      return unlocked
     })
   }
 
   unlockAchievements(ids: AchievementId[]) {
     if (ids.length === 0) return []
-    return this.updateProgress((progress) => this.addUnlockedAchievements(progress, ids))
+    return this.updateProgress((progress) => {
+      const unlocked = this.addUnlockedAchievements(progress, ids)
+      unlocked.forEach((achievementId) => {
+        this.sendSecureUpdate(progress, {
+          eventType: 'achievement_unlock',
+          payload: { achievementId },
+        })
+      })
+      return unlocked
+    })
   }
 
   recordDragonModeUnlocked() {
     this.updateProgress((progress) => {
       progress.dragonModeUnlocked = true
+      this.sendSecureUpdate(progress, {
+        eventType: 'dragon_unlock',
+        payload: {},
+      })
     })
   }
 
@@ -149,6 +185,28 @@ class ProgressStorage {
     this.updateProgress((progress) => {
       const slot = progress.modes[character][difficulty]
       slot.highScore = Math.max(slot.highScore, Math.floor(score))
+      this.sendSecureUpdate(progress, {
+        character,
+        difficulty,
+        eventType: 'high_score',
+        payload: { character, difficulty, score: Math.floor(score) },
+      })
+    })
+  }
+
+  recordEnding(character: PlayerCharacterId, difficulty: DifficultyId, score: number, playTime: number) {
+    const progress = this.ensureProgress()
+    this.sendSecureUpdate(progress, {
+      character,
+      difficulty,
+      eventType: 'ending',
+      payload: {
+        character,
+        difficulty,
+        score: Math.max(0, Math.floor(score)),
+        playTimeSeconds: Math.max(0, Math.floor(playTime / 1000)),
+      },
+      flush: true,
     })
   }
 
@@ -430,6 +488,37 @@ class ProgressStorage {
 
   private incrementCounter(value: number) {
     return Math.min(MAX_COUNTER, value + 1)
+  }
+
+  private sendSecureUpdate(
+    progress: GameProgress,
+    options: {
+      eventType: string
+      payload: Record<string, string | number | boolean>
+      character?: PlayerCharacterId
+      difficulty?: DifficultyId
+      startRun?: boolean
+      flush?: boolean
+    },
+  ) {
+    const snapshot = this.cloneProgress(progress)
+    const runReady =
+      options.startRun && options.character && options.difficulty
+        ? secureGameTransport.startRun(progress.userId, options.character, options.difficulty, true)
+        : Promise.resolve(null)
+
+    void runReady
+      .then(() => {
+        secureGameTransport.queueEvent(options.eventType, options.payload)
+        if (options.flush) {
+          return secureGameTransport.flushEvents()
+        }
+        return undefined
+      })
+      .then(() => secureGameTransport.syncProgress(snapshot))
+      .catch(() => {
+        // Server sync is best-effort; local progress remains the gameplay source of truth.
+      })
   }
 
   private backfillStageClearAchievements(progress: GameProgress) {

@@ -38,10 +38,16 @@
 .card {
   width: min(100%, 420px);
   padding: 28px 24px;
-  border-radius: 28px;
+  border-radius: 8px;
   background: linear-gradient(180deg, #fff8f0 0%, #f7eadf 100%);
   color: #2c2218;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+}
+
+.dashboardCard {
+  width: min(100%, 520px);
+  max-height: min(86vh, 640px);
+  overflow: auto;
 }
 
 .cardTitle {
@@ -97,15 +103,50 @@
   color: #fff8f0;
 }
 
+.button:focus-visible,
+.linkButton:focus-visible,
+.difficultyTab:focus-visible {
+  outline: 3px solid rgba(114, 90, 58, 0.32);
+  outline-offset: 2px;
+}
+
 .linkButton {
   border: 1px solid rgba(114, 90, 58, 0.24);
   color: #725a3a;
   background: rgba(255, 255, 255, 0.5);
 }
 
+.dashboard {
+  display: grid;
+  gap: 14px;
+}
+
+.difficultyTabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.difficultyTab {
+  min-height: 40px;
+  border: 1px solid rgba(114, 90, 58, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.48);
+  color: rgba(44, 34, 24, 0.74);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.difficultyTabActive {
+  background: #725a3a;
+  color: #fff8f0;
+  border-color: #725a3a;
+}
+
 .leaderboard {
-  margin-top: 18px;
-  padding-top: 18px;
+  margin-top: 4px;
+  padding-top: 16px;
   border-top: 1px solid rgba(114, 90, 58, 0.12);
 }
 
@@ -122,19 +163,84 @@
   padding: 0;
   list-style: none;
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .leaderEntry {
   display: grid;
-  grid-template-columns: 30px 1fr auto;
-  gap: 10px;
+  grid-template-columns: 28px 38px minmax(0, 1fr) auto;
+  gap: 8px;
   align-items: center;
+  min-height: 54px;
+  padding: 8px 10px;
+  border: 1px solid rgba(114, 90, 58, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.44);
   font-size: 0.95rem;
 }
 
 .rank {
+  font-weight: 800;
   color: rgba(114, 90, 58, 0.75);
+}
+
+.characterIcon {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(114, 90, 58, 0.2);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+  background-color: rgba(44, 34, 24, 0.08);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.48);
+}
+
+.bride {
+  background-image: url('../assets/icons/high-score-hero-keytar-v1.png');
+}
+
+.dragon {
+  background-image: url('../assets/icons/high-score-dragon-v1.png');
+}
+
+.leaderBody {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.leaderName,
+.leaderMessage {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leaderName {
+  font-weight: 800;
+}
+
+.leaderMessage {
+  color: rgba(44, 34, 24, 0.66);
+  font-size: 0.82rem;
+}
+
+.leaderScore {
+  font-weight: 900;
+  color: #725a3a;
+  font-variant-numeric: tabular-nums;
+}
+
+.emptyState {
+  margin: 0;
+  min-height: 104px;
+  display: grid;
+  place-items: center;
+  border: 1px dashed rgba(114, 90, 58, 0.24);
+  border-radius: 8px;
+  color: rgba(44, 34, 24, 0.68);
+  text-align: center;
 }
 
 .notice {
@@ -146,6 +252,14 @@
 @media (max-width: 540px) {
   .card {
     padding: 24px 18px;
-    border-radius: 24px;
+  }
+
+  .leaderEntry {
+    grid-template-columns: 22px 34px minmax(0, 1fr);
+  }
+
+  .leaderScore {
+    grid-column: 3;
+    justify-self: start;
   }
 }

@@ -4,6 +4,7 @@ import {
   ENDING_CREDITS,
   getEndingCreditImageKey,
 } from '../../content/endingCredits'
+import { getSelectedDifficultyId } from '../../content/difficulty'
 import { GAME_HEIGHT, GAME_WIDTH } from '../constants'
 import { getSelectedPlayerCharacter } from '../systems/PlayerSelection'
 import { scoreManager } from '../systems/ScoreManager'
@@ -372,6 +373,7 @@ export class EndingCreditsScene extends Phaser.Scene {
       score: scoreManager.getScore(),
       playTime: scoreManager.getPlayTime(),
       character,
+      difficulty: getSelectedDifficultyId(),
     })
   }
 

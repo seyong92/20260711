@@ -13,9 +13,13 @@ export function GameSlot({ footer, isOpen, remaining, isReady }: GameSlotProps) 
     : footer.secretLabels.countdown.replace('{remaining}', String(remaining))
 
   return (
-    <div className={`game-slot${isOpen ? ' is-open' : ''}`} aria-hidden={!isOpen}>
+    <div
+      className={`game-slot${isOpen ? ' is-open' : ''}`}
+      role="status"
+      aria-live="polite"
+      aria-hidden={!isOpen}
+    >
       <div className="game-slot__inner">
-        <p className="game-slot__title">{footer.panelTitle}</p>
         <p>{description || footer.secretLabels.default}</p>
       </div>
     </div>

@@ -186,9 +186,8 @@ export const siteContent: SiteContent = {
   footer: {
     license: '© 2026 Sangeon & Eunjin. Crafted with love.',
     teaserLabel: '작은 비밀 열기',
-    panelTitle: 'Secret Arcade',
     gamePath: '/game',
-    showGameEntry: false,
+    showGameEntry: true,
     secretTriggerCount: 5,
     secretLabels: {
       default: '아직 잠겨 있어요.',

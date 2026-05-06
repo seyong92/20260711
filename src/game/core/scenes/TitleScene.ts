@@ -23,6 +23,12 @@ type HiddenCodeInput = 'left' | 'right'
 type FadableGameObject = Phaser.GameObjects.GameObject & {
   setAlpha: (value?: number, topRight?: number, bottomLeft?: number, bottomRight?: number) => FadableGameObject
 }
+type MobileTitleControls = {
+  startText: Phaser.GameObjects.Text
+  showMain: () => void
+  showDifficulty: () => void
+  getObjects: () => FadableGameObject[]
+}
 
 const HIDDEN_CODE: HiddenCodeInput[] = [
   'right',
@@ -166,6 +172,7 @@ export class TitleScene extends Phaser.Scene {
     let cutsceneSelectPanel: Phaser.GameObjects.Container | null = null
     let cutsceneSelectSequenceIndex = 0
     let cutsceneSelectSelectedIndex = 1
+    let mobileTitleControls: MobileTitleControls | null = null
     const titleBg = this.add
       .image(GAME_WIDTH / 2, GAME_HEIGHT / 2, modeStyle.backgroundKey)
       .setOrigin(0.5)
@@ -289,6 +296,7 @@ export class TitleScene extends Phaser.Scene {
         highScoreText,
         titleSparkles,
         mobileStartText,
+        ...(mobileTitleControls?.getObjects() ?? []),
       ].filter(Boolean) as FadableGameObject[])
 
     const updateDragonHint = () => {
@@ -393,7 +401,7 @@ export class TitleScene extends Phaser.Scene {
       subtitleText.setColor(modeStyle.subtitleColor)
       updateDragonHint()
       updateMainMenu()
-      mobileStartText?.setText(TITLE_MENU_OPTIONS[0])
+      mobileTitleControls?.showMain()
     }
 
     const switchTitleMode = (nextMode: GameModeId) => {
@@ -458,7 +466,7 @@ export class TitleScene extends Phaser.Scene {
       achievementsText.setVisible(true)
       highScoreText.setVisible(true)
       updateDragonHint()
-      mobileStartText?.setVisible(true)
+      mobileTitleControls?.showMain()
     }
 
     const closeAchievementsPanel = () => {
@@ -472,7 +480,7 @@ export class TitleScene extends Phaser.Scene {
       achievementsText.setVisible(true)
       highScoreText.setVisible(true)
       updateDragonHint()
-      mobileStartText?.setVisible(true)
+      mobileTitleControls?.showMain()
     }
 
     const closeStageSelectPanel = () => {
@@ -673,11 +681,15 @@ export class TitleScene extends Phaser.Scene {
       const overlay = this.add
         .rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x050716, 0.66)
         .setInteractive()
+      overlay.on('pointerdown', closeAchievementsPanel)
       const panel = this.add.graphics()
       panel.fillStyle(0x101827, 0.96)
       panel.fillRoundedRect(panelX, panelY, panelWidth, panelHeight, 8)
       panel.lineStyle(2, modeStyle.accentNumber, 0.86)
       panel.strokeRoundedRect(panelX, panelY, panelWidth, panelHeight, 8)
+      const panelBlocker = this.add
+        .rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, panelWidth, panelHeight, 0x000000, 0)
+        .setInteractive()
       const titleText = this.add
         .text(GAME_WIDTH / 2, panelY + 43, `도전 과제 ${unlockedCount}/${ACHIEVEMENTS.length}`, {
           fontFamily: 'monospace',
@@ -687,22 +699,7 @@ export class TitleScene extends Phaser.Scene {
         })
         .setOrigin(0.5)
         .setStroke('#050716', 4)
-      const closeBack = this.add
-        .rectangle(panelX + panelWidth - 25, panelY + 28, 34, 34, 0x25344f, 0.94)
-        .setStrokeStyle(1, modeStyle.accentNumber, 0.7)
-        .setInteractive({ useHandCursor: true })
-      const closeText = this.add
-        .text(closeBack.x, closeBack.y - 1, 'X', {
-          fontFamily: 'monospace',
-          fontSize: '20px',
-          color: '#ffffff',
-          fontStyle: 'bold',
-        })
-        .setOrigin(0.5)
-        .setInteractive({ useHandCursor: true })
-      closeBack.on('pointerdown', closeAchievementsPanel)
-      closeText.on('pointerdown', closeAchievementsPanel)
-      container.add([overlay, panel, titleText, closeBack, closeText, achievementsContent])
+      container.add([overlay, panel, panelBlocker, titleText, achievementsContent])
 
       const maskShape = this.add.graphics()
       maskShape.fillStyle(0xffffff, 1)
@@ -814,7 +811,7 @@ export class TitleScene extends Phaser.Scene {
       container.add(dragZone)
 
       const closeHint = this.add
-        .text(GAME_WIDTH / 2, panelY + panelHeight - 28, '스크롤해서 보기 / X: 닫기', {
+        .text(GAME_WIDTH / 2, panelY + panelHeight - 28, '스크롤해서 보기 / 바깥 탭: 닫기', {
           fontFamily: 'monospace',
           fontSize: '11px',
           color: '#9aa5b8',
@@ -1204,8 +1201,13 @@ export class TitleScene extends Phaser.Scene {
     })
 
     const activateMainMenu = () => {
-      if (mainMenuSelectedIndex === 0) showDifficultyPanel()
-      else if (mainMenuSelectedIndex === 1) showAchievementsPanel()
+      if (mainMenuSelectedIndex === 0) {
+        if (!this.sys.game.device.os.desktop && mobileTitleControls) {
+          mobileTitleControls.showDifficulty()
+        } else {
+          showDifficultyPanel()
+        }
+      } else if (mainMenuSelectedIndex === 1) showAchievementsPanel()
       else this.game.events.emit('open-score-dashboard')
     }
 
@@ -1266,12 +1268,14 @@ export class TitleScene extends Phaser.Scene {
     })
 
     if (!this.sys.game.device.os.desktop) {
-      mobileStartText = this.createMobileTitleControls(
+      mobileTitleControls = this.createMobileTitleControls(
         recordCodeInput,
         activateMainMenu,
         showAchievementsPanel,
         () => this.game.events.emit('open-score-dashboard'),
+        startIntroWithDifficulty,
       )
+      mobileStartText = mobileTitleControls.startText
     }
 
     this.cameras.main.fadeIn(500, 0, 0, 0)
@@ -1282,16 +1286,23 @@ export class TitleScene extends Phaser.Scene {
     start: () => void,
     showAchievements: () => void,
     showScoreDashboard: () => void,
+    startDifficulty: (difficultyId: DifficultyId) => void,
   ) {
     const y = GAME_HEIGHT - 54
-    let startButtonText: Phaser.GameObjects.Text | null = null
-    const makeButton = (x: number, width: number, label: string, onDown: () => void) => {
+    type MobileButton = {
+      rect: Phaser.GameObjects.Rectangle
+      text: Phaser.GameObjects.Text
+      onDown: () => void
+    }
+    const buttons: MobileButton[] = []
+
+    const makeButton = (x: number, width: number) => {
       const rect = this.add
         .rectangle(x, y, width, 44, 0x000000, 0.34)
         .setStrokeStyle(1, 0xffffff, 0.18)
         .setInteractive({ useHandCursor: true })
       const text = this.add
-        .text(x, y, label, {
+        .text(x, y, '', {
           fontFamily: 'monospace',
           fontSize: '16px',
           color: '#ffffff',
@@ -1300,16 +1311,68 @@ export class TitleScene extends Phaser.Scene {
         .setOrigin(0.5)
       rect.on('pointerdown', () => {
         this.tweens.add({ targets: [rect, text], alpha: { from: 0.65, to: 1 }, duration: 90, yoyo: true })
-        onDown()
+        buttons.find((button) => button.rect === rect)?.onDown()
       })
-      return text
+      const button: MobileButton = { rect, text, onDown: () => undefined }
+      buttons.push(button)
+      return button
     }
 
-    makeButton(42, 64, '◀', () => recordCodeInput('left'))
-    makeButton(114, 64, '▶', () => recordCodeInput('right'))
-    startButtonText = makeButton(216, 86, TITLE_MENU_OPTIONS[0], start)
-    makeButton(316, 70, '도전', showAchievements)
-    makeButton(390, 70, '점수', showScoreDashboard)
-    return startButtonText
+    const mainButtons = [
+      makeButton(42, 64),
+      makeButton(114, 64),
+      makeButton(216, 86),
+      makeButton(316, 70),
+      makeButton(390, 70),
+    ]
+
+    const setButton = (button: MobileButton, x: number, width: number, label: string, onDown: () => void) => {
+      this.tweens.killTweensOf([button.rect, button.text])
+      button.rect
+        .setPosition(x, y)
+        .setSize(width, 44)
+        .setDisplaySize(width, 44)
+        .setAlpha(1)
+        .setVisible(true)
+      button.text
+        .setPosition(x, y)
+        .setText(label)
+        .setFontSize(label.length >= 6 ? '13px' : '16px')
+        .setAlpha(1)
+        .setVisible(true)
+      button.onDown = onDown
+    }
+
+    const hideButton = (button: MobileButton) => {
+      button.rect.setVisible(false)
+      button.text.setVisible(false)
+      button.onDown = () => undefined
+    }
+
+    const showMain = () => {
+      setButton(mainButtons[0], 42, 64, '◀', () => recordCodeInput('left'))
+      setButton(mainButtons[1], 114, 64, '▶', () => recordCodeInput('right'))
+      setButton(mainButtons[2], 216, 86, TITLE_MENU_OPTIONS[0], start)
+      setButton(mainButtons[3], 316, 70, '도전', showAchievements)
+      setButton(mainButtons[4], 390, 70, '점수', showScoreDashboard)
+    }
+
+    const showDifficulty = () => {
+      const width = 91.5
+      setButton(mainButtons[0], 65.75, width, '취소', showMain)
+      setButton(mainButtons[1], 165.25, width, 'EASY', () => startDifficulty('easy'))
+      setButton(mainButtons[2], 264.75, width, 'NORMAL', () => startDifficulty('normal'))
+      setButton(mainButtons[3], 364.25, width, 'HARD', () => startDifficulty('hard'))
+      hideButton(mainButtons[4])
+    }
+
+    showMain()
+
+    return {
+      startText: mainButtons[2].text,
+      showMain,
+      showDifficulty,
+      getObjects: () => buttons.flatMap((button) => [button.rect, button.text] as FadableGameObject[]),
+    }
   }
 }

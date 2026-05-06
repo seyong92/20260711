@@ -135,7 +135,6 @@ export interface GalleryContent {
 export interface FooterContent {
   license: string
   teaserLabel: string
-  panelTitle: string
   gamePath: string
   showGameEntry: boolean
   secretTriggerCount: number

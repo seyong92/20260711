@@ -67,9 +67,8 @@ footer 하단 비밀 링크와 미니게임 진입 조건은 `src/data/siteConte
 footer: {
   license: '© 2026 Sang-eon & Eun-jin. Crafted with love.',
   teaserLabel: '작은 비밀 열기',
-  panelTitle: 'Secret Arcade',
   gamePath: '/game',
-  showGameEntry: false,
+  showGameEntry: true,
   secretTriggerCount: 5,
   secretLabels: {
     default: '아직 잠겨 있어요.',

@@ -4,6 +4,7 @@ import Phaser from 'phaser'
 import { appConfig } from '../../config/appConfig'
 import { siteContent } from '../../data/siteContent'
 import { buildAppPath } from '../../lib/routes'
+import { applySiteMeta } from '../../lib/socialMeta'
 import { createGameConfig } from '../core/config'
 import type { DifficultyId } from '../content/difficulty'
 import type { PlayerCharacterId } from '../core/systems/PlayerSelection'
@@ -50,7 +51,10 @@ export function GamePage() {
   const endingModeContent = getGameModeContent(ending?.character ?? 'bride')
 
   useEffect(() => {
-    document.title = `${defaultModeContent.title} | ${siteContent.meta.title}`
+    applySiteMeta(siteContent.meta, {
+      title: `${defaultModeContent.title} | ${siteContent.meta.title}`,
+      path: appConfig.gamePath,
+    })
   }, [defaultModeContent.title])
 
   useEffect(() => {

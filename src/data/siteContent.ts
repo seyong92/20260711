@@ -6,9 +6,17 @@ const publicAssetPath = buildAppPath
 export const siteContent: SiteContent = {
   meta: {
     title: '용상언 & 최은진의 결혼식에 초대합니다',
-    description: '용상언 · 최은진 결혼식 초대장',
+    description:
+      '소중한 걸음 하시어 함께 축복해 주세요. 2026년 7월 11일 토요일 오후 12시 30분 · 더휴웨딩홀',
     faviconSrc: publicAssetPath('/favicon.png'),
     faviconType: 'image/png',
+    image: {
+      src: publicAssetPath('/og-photo.jpg'),
+      alt: '용상언 최은진 결혼식 청첩장 대표 사진',
+      width: 1200,
+      height: 630,
+      type: 'image/jpeg',
+    },
   },
   couple: {
     groom: '용상언',

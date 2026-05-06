@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 
 import { siteContent } from '../data/siteContent'
 import { useActiveSection } from '../hooks/useActiveSection'
+import { applySiteMeta } from '../lib/socialMeta'
 import type { NavItem } from '../types/site'
 import { AccountSection } from './AccountSection'
 import { EventDetails } from './EventDetails'
@@ -33,25 +34,7 @@ export function InvitationPage() {
   )
 
   useEffect(() => {
-    document.title = siteContent.meta.title
-
-    const descriptionTag = document.querySelector('meta[name="description"]')
-    if (descriptionTag) {
-      descriptionTag.setAttribute('content', siteContent.meta.description)
-    }
-
-    const faviconTag = document.querySelector<HTMLLinkElement>('link[rel="icon"]')
-    if (faviconTag) {
-      faviconTag.href = siteContent.meta.faviconSrc
-      faviconTag.type = siteContent.meta.faviconType ?? ''
-      return
-    }
-
-    const link = document.createElement('link')
-    link.rel = 'icon'
-    link.href = siteContent.meta.faviconSrc
-    link.type = siteContent.meta.faviconType ?? ''
-    document.head.appendChild(link)
+    applySiteMeta(siteContent.meta)
   }, [])
 
   return (

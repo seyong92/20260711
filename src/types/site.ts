@@ -37,6 +37,13 @@ export interface SiteMetaContent {
   description: string
   faviconSrc: string
   faviconType?: string
+  image: {
+    src: string
+    alt: string
+    width: number
+    height: number
+    type: string
+  }
 }
 
 export interface HeroContent {

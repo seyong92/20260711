@@ -149,6 +149,19 @@ export async function submitScore(data: ScoreSubmission): Promise<SubmitResponse
     body: JSON.stringify(securePayload),
   })
 
+  if (!response.ok) {
+    let detail = `Score submission failed: ${response.status}`
+    try {
+      const payload = (await response.json()) as { detail?: unknown }
+      if (typeof payload.detail === 'string') {
+        detail = payload.detail
+      }
+    } catch {
+      // Keep the status-based message if the server did not return JSON.
+    }
+    throw new Error(detail)
+  }
+
   return response.json()
 }
 

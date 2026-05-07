@@ -44,6 +44,8 @@ export function GamePage() {
   const [activeDifficulty, setActiveDifficulty] = useState<DifficultyId>('normal')
   const [name, setName] = useState('')
   const [message, setMessage] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
   const [progressWarningVisible, setProgressWarningVisible] = useState(false)
 
   const { gameConfig } = siteContent
@@ -128,26 +130,40 @@ export function GamePage() {
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
-    if (!ending || !name.trim()) return
+    if (!ending || !name.trim() || submitting) return
 
-    await submitScore({
-      userId: progressStorage.getUserId(),
-      runId: secureGameTransport.getRunId(),
-      playerName: name.trim(),
-      score: ending.score,
-      message: message.trim(),
-      playTimeSeconds: Math.floor(ending.playTime / 1000),
-      difficulty: ending.difficulty,
-      character: ending.character,
-      finalEventHash: secureGameTransport.getCurrentHash(),
-      timestamp: Date.now(),
-    })
+    setSubmitting(true)
+    setSubmitError('')
 
-    setActiveDifficulty(ending.difficulty)
-    const result = await getLeaderboard(ending.difficulty, LEADERBOARD_LIMIT)
-    setLeaderboard(result.entries)
-    setDashboardOpen(true)
-    setSubmitted(true)
+    try {
+      await submitScore({
+        userId: progressStorage.getUserId(),
+        runId: secureGameTransport.getRunId(),
+        playerName: name.trim(),
+        score: ending.score,
+        message: message.trim(),
+        playTimeSeconds: Math.floor(ending.playTime / 1000),
+        difficulty: ending.difficulty,
+        character: ending.character,
+        finalEventHash: secureGameTransport.getCurrentHash(),
+        timestamp: Date.now(),
+      })
+
+      setActiveDifficulty(ending.difficulty)
+      const result = await getLeaderboard(ending.difficulty, LEADERBOARD_LIMIT)
+      setLeaderboard(result.entries)
+      setDashboardOpen(true)
+      setSubmitted(true)
+    } catch (error) {
+      console.error('Score submission failed', error)
+      setSubmitError('메시지 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  function stopGameKeyboardPropagation(event: React.KeyboardEvent) {
+    event.stopPropagation()
   }
 
   function handleSkipSubmit() {
@@ -161,6 +177,8 @@ export function GamePage() {
     setLeaderboard([])
     setName('')
     setMessage('')
+    setSubmitError('')
+    setSubmitting(false)
     gameRef.current?.events.emit('restart-game')
   }
 
@@ -184,7 +202,12 @@ export function GamePage() {
             <p className={styles.scoreText}>SCORE: {ending.score.toLocaleString()}</p>
 
             {gameConfig.scoreApi.submissionsEnabled ? (
-              <form onSubmit={handleSubmit} className={styles.form}>
+              <form
+                onSubmit={handleSubmit}
+                onKeyDownCapture={stopGameKeyboardPropagation}
+                onKeyUpCapture={stopGameKeyboardPropagation}
+                className={styles.form}
+              >
                 <input
                   className={styles.input}
                   type="text"
@@ -202,9 +225,10 @@ export function GamePage() {
                   value={message}
                   onChange={(event) => setMessage(event.target.value)}
                 />
-                <button className={styles.button} type="submit">
-                  {gameConfig.scoreForm.submitLabel}
+                <button className={styles.button} type="submit" disabled={submitting}>
+                  {submitting ? '저장 중...' : gameConfig.scoreForm.submitLabel}
                 </button>
+                {submitError ? <p className={styles.errorText}>{submitError}</p> : null}
                 <button className={styles.linkButton} type="button" onClick={handleSkipSubmit}>
                   {gameConfig.scoreForm.skipSubmitLabel}
                 </button>

@@ -115,6 +115,7 @@ class SecureGameTransport {
   private session: RunSession | null = null
   private pendingEvents: QueueEvent[] = []
   private flushTimer: number | null = null
+  private flushPromise: Promise<void> | null = null
 
   isEnabled() {
     return !shouldUseMock() && typeof window !== 'undefined' && !!crypto.subtle
@@ -171,7 +172,27 @@ class SecureGameTransport {
   }
 
   async flushEvents() {
-    if (!this.isEnabled() || !this.session || this.pendingEvents.length === 0) return
+    if (!this.isEnabled() || !this.session) return
+    if (this.flushPromise) {
+      await this.flushPromise
+      if (this.pendingEvents.length === 0) return
+    }
+    if (this.pendingEvents.length === 0) return
+
+    this.flushPromise = this.flushPendingEvents()
+    try {
+      await this.flushPromise
+    } finally {
+      this.flushPromise = null
+    }
+
+    if (this.pendingEvents.length > 0) {
+      await this.flushEvents()
+    }
+  }
+
+  private async flushPendingEvents() {
+    if (!this.session || this.pendingEvents.length === 0) return
     const session = this.session
     const batch = this.pendingEvents.splice(0)
     const events = []

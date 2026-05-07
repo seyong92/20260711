@@ -35,6 +35,16 @@ const HARD_BOSS_MINION_INTERVAL = 8200
 const HARD_BOSS_MINION_FIRST_DELAY = HARD_BOSS_MINION_INTERVAL
 const HARD_BOSS_MINION_ITEM_DROP_CHANCE = 0.5
 const HARD_BOSS_MINION_DROP_ITEMS = ['coin', 'coin', 'heart', 'heart', 'star', 'powerup']
+const THESIS_PROJECTOR_STAGE_INDEX = 1
+const THESIS_PROJECTOR_X = GAME_WIDTH / 2
+const THESIS_PROJECTOR_Y = 258
+const THESIS_PROJECTOR_WIDTH = 274
+const THESIS_PROJECTOR_HEIGHT = 154
+const THESIS_PROJECTOR_DEPTH = -8
+const THESIS_PROJECTOR_CHEER_Y = 244
+const THESIS_PROJECTOR_CHEER_SIZE = 112
+const THESIS_PROJECTOR_SLIDE_KEYS = ['thesis-slide-1', 'thesis-slide-2', 'thesis-slide-3'] as const
+const THESIS_PROJECTOR_CHEER_KEYS = ['dragon-cheer-1', 'dragon-cheer-2', 'dragon-cheer-3'] as const
 
 type BossSprite = ThesisBoss | TrainBoss | PianoBoss
 type BossWithHitBounds = BossSprite & {
@@ -62,6 +72,9 @@ export class BossScene extends Phaser.Scene {
   private nextBossMinionSpawnAt = Number.POSITIVE_INFINITY
   private hardBossMinionTimerStarted = false
   private carry: BossCarryState | null = null
+  private thesisProjectorImage: Phaser.GameObjects.Image | null = null
+  private thesisProjectorCheerImage: Phaser.GameObjects.Image | null = null
+  private thesisProjectorIndex = -1
 
   constructor() {
     super({ key: 'BossScene' })
@@ -74,6 +87,7 @@ export class BossScene extends Phaser.Scene {
     this.hardBossMinionTimerStarted = false
     this.nextBossMinionSpawnAt = Number.POSITIVE_INFINITY
     this.carry = data.carry ?? null
+    this.thesisProjectorIndex = -1
   }
 
   create() {
@@ -98,6 +112,7 @@ export class BossScene extends Phaser.Scene {
     this.bossMinions = this.physics.add.group({ runChildUpdate: true })
     this.restoreCarryItems()
     this.boss = this.createBoss(stage.bossType)
+    this.createThesisProjector(stage.bossType)
     this.hud = new HUD(this, () => this.openPauseMenu())
     this.hud.setTextTheme(stage.textTheme)
     this.hud.setStage(`BOSS ${stage.id}: ${stage.name}`)
@@ -115,6 +130,7 @@ export class BossScene extends Phaser.Scene {
     this.bossItemDropIndex = 0
     this.nextBossMinionSpawnAt = Number.POSITIVE_INFINITY
     this.setupCollisions()
+    this.updateThesisProjector(true)
   }
 
   private createBoss(type: string) {
@@ -130,6 +146,25 @@ export class BossScene extends Phaser.Scene {
           this.handlePlayerHit()
         })
     }
+  }
+
+  private createThesisProjector(bossType: string) {
+    if (this.stageIndex !== THESIS_PROJECTOR_STAGE_INDEX || bossType !== 'thesis') return
+
+    if (getSelectedPlayerCharacter() === 'dragon') {
+      this.thesisProjectorCheerImage = this.add
+        .image(THESIS_PROJECTOR_X, THESIS_PROJECTOR_CHEER_Y, THESIS_PROJECTOR_CHEER_KEYS[0])
+        .setDisplaySize(THESIS_PROJECTOR_CHEER_SIZE, THESIS_PROJECTOR_CHEER_SIZE)
+        .setDepth(THESIS_PROJECTOR_DEPTH)
+        .setAlpha(0.94)
+      return
+    }
+
+    this.thesisProjectorImage = this.add
+      .image(THESIS_PROJECTOR_X, THESIS_PROJECTOR_Y, THESIS_PROJECTOR_SLIDE_KEYS[0])
+      .setDisplaySize(THESIS_PROJECTOR_WIDTH, THESIS_PROJECTOR_HEIGHT)
+      .setDepth(THESIS_PROJECTOR_DEPTH)
+      .setAlpha(0.9)
   }
 
   private setupCollisions() {
@@ -444,6 +479,7 @@ export class BossScene extends Phaser.Scene {
     this.hud.updateScore(scoreManager.getScore())
     if (this.boss.active) {
       this.updateBossHPBar()
+      this.updateThesisProjector()
     }
     this.updateDebugOverlay()
   }
@@ -739,8 +775,42 @@ export class BossScene extends Phaser.Scene {
     this.hud.showBossHP(bossConfig.type.toUpperCase(), current, this.boss.maxHp)
   }
 
+  private updateThesisProjector(force = false) {
+    if (!this.thesisProjectorImage && !this.thesisProjectorCheerImage) return
+
+    const hpRatio = Phaser.Math.Clamp(this.boss.hp / this.boss.maxHp, 0, 1)
+    const nextIndex = hpRatio <= 0.26 ? 2 : hpRatio <= 0.62 ? 1 : 0
+    if (!force && nextIndex === this.thesisProjectorIndex) return
+    this.thesisProjectorIndex = nextIndex
+
+    if (this.thesisProjectorImage) {
+      this.thesisProjectorImage.setTexture(THESIS_PROJECTOR_SLIDE_KEYS[nextIndex])
+      this.thesisProjectorImage.setDisplaySize(THESIS_PROJECTOR_WIDTH, THESIS_PROJECTOR_HEIGHT)
+      this.thesisProjectorImage.setAlpha(force ? 0.9 : 0.24)
+      this.tweens.add({
+        targets: this.thesisProjectorImage,
+        alpha: 0.9,
+        duration: force ? 0 : 220,
+        ease: 'Sine.easeOut',
+      })
+      return
+    }
+
+    if (!this.thesisProjectorCheerImage) return
+    this.thesisProjectorCheerImage.setTexture(THESIS_PROJECTOR_CHEER_KEYS[nextIndex])
+    this.thesisProjectorCheerImage.setDisplaySize(THESIS_PROJECTOR_CHEER_SIZE, THESIS_PROJECTOR_CHEER_SIZE)
+    this.thesisProjectorCheerImage.setAlpha(force ? 0.94 : 0.18)
+    this.tweens.add({
+      targets: this.thesisProjectorCheerImage,
+      alpha: 0.94,
+      duration: force ? 0 : 220,
+      ease: 'Sine.easeOut',
+    })
+  }
+
   private cleanup() {
     this.input.keyboard?.off('keydown', this.onKeyDown, this)
+    this.destroyThesisProjector()
     this.pauseMenu.destroy()
     this.controls.destroy()
     this.hud.destroy()
@@ -749,6 +819,14 @@ export class BossScene extends Phaser.Scene {
     this.droppedPowerups.clear(true, true)
     this.bossMinions.clear(true, true)
     this.bulletPool.deactivateAll()
+  }
+
+  private destroyThesisProjector() {
+    this.thesisProjectorImage?.destroy()
+    this.thesisProjectorCheerImage?.destroy()
+    this.thesisProjectorImage = null
+    this.thesisProjectorCheerImage = null
+    this.thesisProjectorIndex = -1
   }
 
   private updateDebugOverlay() {

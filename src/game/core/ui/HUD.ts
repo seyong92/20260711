@@ -69,6 +69,7 @@ export class HUD {
         fontStyle: 'bold',
       })
       .setOrigin(0.5)
+      .setStroke('#050716', 3)
       .setVisible(false)
     this.container.add(this.bossHpText)
   }

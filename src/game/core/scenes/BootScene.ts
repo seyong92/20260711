@@ -16,6 +16,12 @@ import stage3DefenseClassroomBgUrl from '../../assets/backgrounds/stage3-defense
 import stage3BgUrl from '../../assets/backgrounds/stage3-kaist-campus-bg.png'
 import titleBgBrideUrl from '../../assets/backgrounds/title-bg-bride-fantasy-pixel-v4.png'
 import titleBgDragonUrl from '../../assets/backgrounds/title-bg-dragon-fantasy-pixel-v5.png'
+import dragonCheer1Url from '../../assets/projector/dragon-cheer-1.png'
+import dragonCheer2Url from '../../assets/projector/dragon-cheer-2.png'
+import dragonCheer3Url from '../../assets/projector/dragon-cheer-3.png'
+import thesisSlide1Url from '../../assets/projector/thesis-slide-1.png'
+import thesisSlide2Url from '../../assets/projector/thesis-slide-2.png'
+import thesisSlide3Url from '../../assets/projector/thesis-slide-3.png'
 import titleLogoBrideUrl from '../../assets/title/title-logo-bride.png'
 import titleLogoDragonUrl from '../../assets/title/title-logo-dragon.png'
 import basicBulletSpriteUrl from '../../assets/sprites/basic_bullet-v5-notes.png'
@@ -73,6 +79,12 @@ export class BootScene extends Phaser.Scene {
     this.load.image('stage2-bg', stage2BgUrl)
     this.load.image('stage3-bg', stage3BgUrl)
     this.load.image('stage3-boss-bg', stage3DefenseClassroomBgUrl)
+    this.load.image('dragon-cheer-1', dragonCheer1Url)
+    this.load.image('dragon-cheer-2', dragonCheer2Url)
+    this.load.image('dragon-cheer-3', dragonCheer3Url)
+    this.load.image('thesis-slide-1', thesisSlide1Url)
+    this.load.image('thesis-slide-2', thesisSlide2Url)
+    this.load.image('thesis-slide-3', thesisSlide3Url)
     this.load.image('game-over-bg', gameOverBgUrl)
     this.load.image('achievement-bouquet', achievementBouquetIconUrl)
     this.load.image('achievement-camera', achievementCameraIconUrl)

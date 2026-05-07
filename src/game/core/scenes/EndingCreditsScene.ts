@@ -106,7 +106,8 @@ export class EndingCreditsScene extends Phaser.Scene {
     this.showSlide(0)
     this.input.keyboard?.on('keydown', this.onKeyDown, this)
     this.input.keyboard?.on('keyup', this.onKeyUp, this)
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.cleanup, this)
+    this.game.events.once('restart-game', this.restartFromScoreOverlay, this)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.shutdown, this)
   }
 
   update(_time: number, delta: number) {
@@ -383,5 +384,15 @@ export class EndingCreditsScene extends Phaser.Scene {
     this.pressedKeys.clear()
     this.touchFastForward = false
     this.touchSkipHeld = false
+  }
+
+  private shutdown() {
+    this.game.events.off('restart-game', this.restartFromScoreOverlay, this)
+    this.cleanup()
+  }
+
+  private restartFromScoreOverlay() {
+    this.shutdown()
+    this.scene.start('TitleScene')
   }
 }

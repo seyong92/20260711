@@ -140,6 +140,7 @@ export class TitleScene extends Phaser.Scene {
   }
 
   create() {
+    this.input.resetPointers()
     resetSelectedPlayerCharacter()
     this.hiddenCodeIndex = 0
     this.debugCodeBuffer = ''
@@ -1202,10 +1203,9 @@ export class TitleScene extends Phaser.Scene {
 
     const activateMainMenu = () => {
       if (mainMenuSelectedIndex === 0) {
+        showDifficultyPanel()
         if (!this.sys.game.device.os.desktop && mobileTitleControls) {
           mobileTitleControls.showDifficulty()
-        } else {
-          showDifficultyPanel()
         }
       } else if (mainMenuSelectedIndex === 1) showAchievementsPanel()
       else this.game.events.emit('open-score-dashboard')
@@ -1273,6 +1273,7 @@ export class TitleScene extends Phaser.Scene {
         activateMainMenu,
         showAchievementsPanel,
         () => this.game.events.emit('open-score-dashboard'),
+        closeDifficultyPanel,
         startIntroWithDifficulty,
       )
       mobileStartText = mobileTitleControls.startText
@@ -1286,6 +1287,7 @@ export class TitleScene extends Phaser.Scene {
     start: () => void,
     showAchievements: () => void,
     showScoreDashboard: () => void,
+    cancelDifficulty: () => void,
     startDifficulty: (difficultyId: DifficultyId) => void,
   ) {
     const y = GAME_HEIGHT - 54
@@ -1359,7 +1361,7 @@ export class TitleScene extends Phaser.Scene {
 
     const showDifficulty = () => {
       const width = 91.5
-      setButton(mainButtons[0], 65.75, width, '취소', showMain)
+      setButton(mainButtons[0], 65.75, width, '취소', cancelDifficulty)
       setButton(mainButtons[1], 165.25, width, 'EASY', () => startDifficulty('easy'))
       setButton(mainButtons[2], 264.75, width, 'NORMAL', () => startDifficulty('normal'))
       setButton(mainButtons[3], 364.25, width, 'HARD', () => startDifficulty('hard'))

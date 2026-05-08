@@ -5,6 +5,7 @@ import { secureGameTransport } from './secureTransport'
 
 const LOCAL_STORAGE_KEY = 'wedding-game-scoreboard-v1'
 const STORAGE_VERSION = 1
+const DEFAULT_REMOTE_LEADERBOARD_LIMIT = 100
 const DEFAULT_LOCAL_ENTRIES: ScoreEntry[] = [
   {
     id: 'default-easy-bride',
@@ -165,20 +166,20 @@ export async function submitScore(data: ScoreSubmission): Promise<SubmitResponse
   return response.json()
 }
 
-export async function getLeaderboard(difficulty: DifficultyId, limit = 10): Promise<LeaderboardResponse> {
+export async function getLeaderboard(difficulty: DifficultyId, limit?: number): Promise<LeaderboardResponse> {
   if (shouldUseMock()) {
     const entries = readLocalScoreboard()
       .filter((entry) => entry.difficulty === difficulty)
       .sort(compareScoreEntries)
     return {
-      entries: entries.slice(0, limit),
+      entries: typeof limit === 'number' ? entries.slice(0, limit) : entries,
       totalCount: entries.length,
     }
   }
 
   const params = new URLSearchParams({
     difficulty,
-    limit: String(limit),
+    limit: String(limit ?? DEFAULT_REMOTE_LEADERBOARD_LIMIT),
   })
   const response = await fetch(`${getApiBaseUrl()}/v1/scores/top?${params.toString()}`)
   return response.json()

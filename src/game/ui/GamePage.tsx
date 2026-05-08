@@ -23,7 +23,6 @@ interface EndingData {
 }
 
 const DIFFICULTY_OPTIONS: DifficultyId[] = ['easy', 'normal', 'hard']
-const LEADERBOARD_LIMIT = 10
 const DIFFICULTY_LABELS: Record<DifficultyId, string> = {
   easy: 'EASY',
   normal: 'NORMAL',
@@ -118,7 +117,7 @@ export function GamePage() {
   useEffect(() => {
     if (!dashboardOpen && !submitted) return
     let cancelled = false
-    getLeaderboard(activeDifficulty, LEADERBOARD_LIMIT).then((result) => {
+    getLeaderboard(activeDifficulty).then((result) => {
       if (!cancelled) {
         setLeaderboard(result.entries)
       }
@@ -150,7 +149,7 @@ export function GamePage() {
       })
 
       setActiveDifficulty(ending.difficulty)
-      const result = await getLeaderboard(ending.difficulty, LEADERBOARD_LIMIT)
+      const result = await getLeaderboard(ending.difficulty)
       setLeaderboard(result.entries)
       setDashboardOpen(true)
       setSubmitted(true)

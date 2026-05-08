@@ -5,9 +5,10 @@ import {
   setSelectedDifficulty,
   type DifficultyId,
 } from '../../content/difficulty'
-import { ACHIEVEMENTS } from '../../content/achievements'
+import { ACHIEVEMENTS, type AchievementId } from '../../content/achievements'
 import { getGameModeContent } from '../../content/gameContent'
 import { STAGES } from '../../content/stages'
+import { getAchievementStats, type AchievementStatsById } from '../../api/achievements'
 import type { GameModeId, StorySequenceId } from '../../../types/site'
 import { GAME_HEIGHT, GAME_WIDTH } from '../constants'
 import {
@@ -28,6 +29,10 @@ type MobileTitleControls = {
   showMain: () => void
   showDifficulty: () => void
   getObjects: () => FadableGameObject[]
+}
+type AchievementRateText = {
+  id: AchievementId
+  text: Phaser.GameObjects.Text
 }
 
 const HIDDEN_CODE: HiddenCodeInput[] = [
@@ -74,6 +79,13 @@ const STAGE_SELECT_START_INDEX = STAGE_SELECT_HITBOX_INDEX + 1
 const STAGE_SELECT_ROW_COUNT = STAGE_SELECT_START_INDEX + 1
 const TITLE_ACTION_X = GAME_WIDTH - 118
 const TITLE_MENU_OPTIONS = ['게임 시작', '도전 과제', 'High Score'] as const
+
+function formatAchievementUnlockRate(stat: { participantCount: number; unlockRate: number } | undefined) {
+  if (!stat || stat.participantCount <= 0) return '전체 --'
+  const percent = Phaser.Math.Clamp(stat.unlockRate, 0, 1) * 100
+  const formatted = percent > 0 && percent < 0.1 ? '<0.1' : percent > 0 && percent < 10 ? percent.toFixed(1) : percent.toFixed(0)
+  return `전체 ${formatted}%`
+}
 
 type TitleModeStyle = {
   backgroundKey: string
@@ -165,6 +177,7 @@ export class TitleScene extends Phaser.Scene {
     let achievementsScrollThumb: Phaser.GameObjects.Rectangle | null = null
     let achievementsScrollY = 0
     let achievementsMinScrollY = 0
+    let achievementStatsPromise: Promise<AchievementStatsById | null> | null = null
     let difficultyPanelSelectedIndex = getDifficultyOptionIndex(getSelectedDifficultyId())
     let stageSelectPanel: Phaser.GameObjects.Container | null = null
     let stageSelectStageIndex = 0
@@ -709,6 +722,7 @@ export class TitleScene extends Phaser.Scene {
       achievementsContent.setMask(maskShape.createGeometryMask())
       container.add(maskShape)
 
+      const rateTexts: AchievementRateText[] = []
       ACHIEVEMENTS.forEach((achievement, index) => {
         const y = index * rowStep + rowHeight / 2
         const hidden = achievement.hiddenUntilDragonUnlocked && !snapshot.dragonModeUnlocked
@@ -743,7 +757,7 @@ export class TitleScene extends Phaser.Scene {
         }
 
         const title = this.add
-          .text(rowX + 48, y - 18, hidden ? '???' : achievement.name, {
+          .text(rowX + 48, y - 19, hidden ? '???' : achievement.name, {
             fontFamily: '"Apple SD Gothic Neo", "Noto Sans KR", sans-serif',
             fontSize: '14px',
             color: achieved ? modeStyle.accentColor : hidden ? '#8f9aaa' : '#e0e0e0',
@@ -751,22 +765,51 @@ export class TitleScene extends Phaser.Scene {
           })
           .setOrigin(0, 0)
         const description = this.add
-          .text(rowX + 48, y + 2, hidden ? '???' : achievement.description, {
+          .text(rowX + 48, y + 1, hidden ? '???' : achievement.description, {
             fontFamily: '"Apple SD Gothic Neo", "Noto Sans KR", sans-serif',
             fontSize: '9px',
             color: achieved ? '#cfd8ef' : '#9aa5b8',
-            wordWrap: { width: rowWidth - 104 },
+            wordWrap: { width: rowWidth - 126 },
           })
           .setOrigin(0, 0)
         const status = this.add
-          .text(rowX + rowWidth - 28, y, achieved ? 'CLEAR' : '--', {
+          .text(rowX + rowWidth - 34, y - 9, achieved ? 'CLEAR' : '--', {
             fontFamily: 'monospace',
             fontSize: '10px',
             color: achieved ? '#ffd76d' : '#6f7b8f',
             fontStyle: 'bold',
           })
           .setOrigin(0.5)
-        achievementsContent?.add([title, description, status])
+        const rate = this.add
+          .text(rowX + rowWidth - 34, y + 9, hidden ? '전체 --' : '전체 ...', {
+            fontFamily: 'monospace',
+            fontSize: '9px',
+            color: hidden ? '#4f5b6c' : '#9aa5b8',
+            fontStyle: 'bold',
+          })
+          .setOrigin(0.5)
+        achievementsContent?.add([title, description, status, rate])
+        if (!hidden) {
+          rateTexts.push({ id: achievement.id, text: rate })
+        }
+      })
+
+      const updateRateTexts = (stats: AchievementStatsById | null) => {
+        rateTexts.forEach(({ id, text }) => {
+          if (!text.active) return
+          text.setText(formatAchievementUnlockRate(stats?.[id]))
+        })
+      }
+      if (!achievementStatsPromise) {
+        achievementStatsPromise = getAchievementStats().then((stats) => {
+          if (!stats) achievementStatsPromise = null
+          return stats
+        })
+      }
+      const currentAchievementsPanel = container
+      void achievementStatsPromise.then((stats) => {
+        if (achievementsPanel !== currentAchievementsPanel) return
+        updateRateTexts(stats)
       })
 
       if (maxScrollable > 0) {

@@ -54,6 +54,19 @@ export interface LeaderboardResponse {
   totalCount: number
 }
 
+export interface AchievementStat {
+  id: string
+  name: string
+  description: string
+  unlockedCount: number
+  participantCount: number
+  unlockRate: number
+}
+
+export interface AchievementStatsResponse {
+  achievements: AchievementStat[]
+}
+
 export interface SubmitResponse {
   success: boolean
   rank: number
